@@ -56,6 +56,8 @@
 #define JSON_TYPE_STRING     52
 #define JSON_TYPE_UNKNOWN    99
 
+#define JSON_PATH_SEP       '\x1B'
+
 typedef struct tagCSJSON
 {
   CSLIST Tokens;
@@ -2420,10 +2422,12 @@ CSRESULT
      CSLIST values) {
 
   long count;
-  long i;
+  long i, j;
   long size;
+  long tempKeyLen;
   char* szKey;
-
+  char* tempKey;
+  
   CSJSON_DIRENTRY* pdire;
   CSJSON_LSENTRY* pls;
 
@@ -2434,6 +2438,11 @@ CSRESULT
   {
 
     if (szKey[0] != 0) {
+
+      ///////////////////////////////////////////////////////////////////
+      // Convert submitted path to internal representation. The
+      // internal path separator is the ESC character. 
+      ///////////////////////////////////////////////////////////////////
 
       switch (pdire->type) {
         case JSON_TYPE_STRING:
@@ -2453,7 +2462,22 @@ CSRESULT
           break;
         case JSON_TYPE_ARRAY:
 
-          printf("\n%s : <ARRAY>", szKey);
+          tempKeyLen = strlen(szKey); 
+          tempKey = (char*)malloc(tempKeyLen * sizeof(char) + 1);
+          j=0;
+          while (szKey[j] != 0) {
+            if (szKey[j] == JSON_PATH_SEP) {
+              tempKey[j] = '|';
+            }
+            else {
+              tempKey[j] = szKey[j];
+            }
+            j++;
+          }
+          tempKey[j] = 0;
+
+          printf("\n%s : <ARRAY>", tempKey);
+          free(tempKey);
 
           count = CSLIST_Count(pdire->Listing);
 
@@ -2493,7 +2517,22 @@ CSRESULT
 
         case JSON_TYPE_OBJECT:
 
-          printf("\n%s : <OBJECT>", szKey);
+          tempKeyLen = strlen(szKey); 
+          tempKey = (char*)malloc(tempKeyLen * sizeof(char) + 1);
+          j=0;
+          while (szKey[j] != 0) {
+            if (szKey[j] == JSON_PATH_SEP) {
+              tempKey[j] = '|';
+            }
+            else {
+              tempKey[j] = szKey[j];
+            }
+            j++;
+          }
+          tempKey[j] = 0;
+
+          printf("\n%s : <OBJECT>", tempKey);
+          free(tempKey);
 
           CSMAP_IterStart(pdire->Listing);
 
@@ -2521,7 +2560,7 @@ CSRESULT
                 printf("\n\t%s : <ARRAY>", pls->szKey);
                 break;
               case JSON_TYPE_OBJECT:
-                printf("\n\t%s : <OBJECT>", pls->szKey);
+                printf("\n\t%s : <OBJECT>", szKey);
                 break;
               default:
                 printf("\n\t<UNKNOWN>");
@@ -2611,7 +2650,8 @@ CSRESULT
 
   CSMAP_Clear(This->Object);
 
-  szRoot[0] = '/';
+  //szRoot[0] = '/';
+  szRoot[0] = JSON_PATH_SEP;
   szRoot[1] = 0;
 
   dire.type = type;
@@ -2655,6 +2695,8 @@ long
 
   long curPos;
 
+  char szCanonicalPath[2];
+
   ////////////////////////////////////////////////////////////////////////
   // Allocate slab, if the present one is too small:
   // note that the slab size may be actually larger than the actuall
@@ -2679,7 +2721,9 @@ long
   *szOutStream = This->szSlab;
   curPos = 0;
 
-  CSJSON_PRIVATE_Serialize(This, szPath, szOutStream, &curPos);
+  szCanonicalPath[0] = JSON_PATH_SEP;
+  szCanonicalPath[1] = 0;
+  CSJSON_PRIVATE_Serialize(This, szCanonicalPath, szOutStream, &curPos);
   (*szOutStream)[curPos] = 0;
 
   return curPos;
@@ -2841,11 +2885,11 @@ long
                   memcpy(szSubPath, szPath, pathLen);
                   if (pathLen > 1) { // we are not root path
 
-                    if (szPath[pathLen-1] == '/') {
+                    if (szPath[pathLen-1] == JSON_PATH_SEP) {
                       memcpy(&szSubPath[pathLen], szIndex, indexLen+1);
                     }
                     else {
-                      szSubPath[pathLen] = '/';
+                      szSubPath[pathLen] = JSON_PATH_SEP;
                       memcpy(&szSubPath[pathLen+1], szIndex, indexLen+1);
                     }
                   }
@@ -2872,11 +2916,11 @@ long
 
                   if (pathLen > 1) { // we are not root path
 
-                    if (szPath[pathLen-1] == '/') {
+                    if (szPath[pathLen-1] == JSON_PATH_SEP) {
                       memcpy(&szSubPath[pathLen], szIndex, indexLen+1);
                     }
                     else {
-                      szSubPath[pathLen] = '/';
+                      szSubPath[pathLen] = JSON_PATH_SEP;
                       memcpy(&szSubPath[pathLen+1], szIndex, indexLen+1);
                     }
                   }
@@ -3126,14 +3170,13 @@ long
                 if (pathLen > 1) { // we are not root path
                   if (pls->keySize > 1) {
                     memcpy(szSubPath, szPath, pathLen);
-                    szSubPath[pathLen] = '/';
+                    szSubPath[pathLen] = JSON_PATH_SEP;
                     memcpy(&szSubPath[pathLen+1], pls->szKey, pls->keySize);
                   }
                   else {
                     memcpy(szSubPath, szPath, pathLen);
-                    szSubPath[pathLen] = '/';
-                    szSubPath[pathLen+1] = '/';
-                    szSubPath[pathLen+2] = 0;
+                    szSubPath[pathLen] = JSON_PATH_SEP;
+                    szSubPath[pathLen+1] = 0;
                   }
                 }
                 else {
@@ -3142,8 +3185,8 @@ long
                     memcpy(&szSubPath[pathLen], pls->szKey, pls->keySize);
                   }
                   else {
-                    szSubPath[0] = '/';
-                    szSubPath[1] = '/';
+                    szSubPath[0] = JSON_PATH_SEP;
+                    szSubPath[1] = JSON_PATH_SEP;
                     szSubPath[2] = 0;
                   }
                 }
@@ -3173,14 +3216,13 @@ long
                 if (pathLen > 1) { // we are not root path
                   if (pls->keySize > 1) {
                     memcpy(szSubPath, szPath, pathLen);
-                    szSubPath[pathLen] = '/';
+                    szSubPath[pathLen] = JSON_PATH_SEP;
                     memcpy(&szSubPath[pathLen+1], pls->szKey, pls->keySize);
                   }
                   else {
                     memcpy(szSubPath, szPath, pathLen);
-                    szSubPath[pathLen] = '/';
-                    szSubPath[pathLen+1] = '/';
-                    szSubPath[pathLen+2] = 0;
+                    szSubPath[pathLen] = JSON_PATH_SEP;
+                    szSubPath[pathLen+1] = 0;
                   }
                 }
                 else {
@@ -3189,8 +3231,8 @@ long
                     memcpy(&szSubPath[pathLen], pls->szKey, pls->keySize);
                   }
                   else {
-                    szSubPath[0] = '/';
-                    szSubPath[1] = '/';
+                    szSubPath[0] = JSON_PATH_SEP;
+                    szSubPath[1] = JSON_PATH_SEP;
                     szSubPath[2] = 0;
                   }
                 }
@@ -3240,6 +3282,10 @@ CSRESULT
 
   long keySize;
   long size;
+  long len;
+  long i;
+
+  char* tempPath;
 
   CSJSON_DIRENTRY* ppve;
   CSJSON_LSENTRY lse;
@@ -3249,11 +3295,32 @@ CSRESULT
     boolValue = JSON_TYPE_BOOL_TRUE;
   }
 
+  ///////////////////////////////////////////////////////////////////
+  // Convert submitted path to internal representation. The
+  // internal path separator is the ESC character. 
+  ///////////////////////////////////////////////////////////////////
+
+  len = strlen(szPath); 
+  tempPath = (char*)malloc(len * sizeof(char) + 1);
+  i=0;
+  while (szPath[i] != 0) {
+    if (szPath[i] == szPath[0]) {
+      tempPath[i] = JSON_PATH_SEP;
+    }
+    else {
+      tempPath[i] = szPath[i];
+    }
+    i++;
+  }
+  tempPath[i] = 0;
+
   if (CS_SUCCEED(CSMAP_Lookup(This->Object,
-                              szPath,
+                              tempPath,
                               (void**)(&ppve),
                               &size)))
   {
+    free(tempPath);
+
     switch(ppve->type) {
 
       case JSON_TYPE_ARRAY:
@@ -3345,6 +3412,9 @@ CSRESULT
 
     return CS_SUCCESS;
   }
+  else {
+    free(tempPath);
+  }
 
   return CS_FAILURE;
 }
@@ -3361,12 +3431,36 @@ CSRESULT
 
   long keySize;
   long size;
+  long len;
+  long i;
+
+  char* tempPath;
+
+  ///////////////////////////////////////////////////////////////////
+  // Convert submitted path to internal representation. The
+  // internal path separator is the ESC character. 
+  ///////////////////////////////////////////////////////////////////
+
+  len = strlen(szPath); 
+  tempPath = (char*)malloc(len * sizeof(char) + 1);
+  i=0;
+  while (szPath[i] != 0) {
+    if (szPath[i] == szPath[0]) {
+      tempPath[i] = JSON_PATH_SEP;
+    }
+    else {
+      tempPath[i] = szPath[i];
+    }
+    i++;
+  }
+  tempPath[i] = 0;
 
   if (CS_SUCCEED(CSMAP_Lookup(This->Object,
-                              szPath,
+                              tempPath,
                               (void**)(&ppve),
                               &size)))
   {
+    free(tempPath);
 
     switch(ppve->type) {
 
@@ -3462,6 +3556,9 @@ CSRESULT
 
     return CS_SUCCESS;
   }
+  else {
+    free(tempPath);
+  }
 
   return CS_FAILURE;
 }
@@ -3480,16 +3577,41 @@ CSRESULT
   long valueSize;
   long keySize;
   long size;
+  long len;
+  long i;
+
+  char* tempPath;
+
+  ///////////////////////////////////////////////////////////////////
+  // Convert submitted path to internal representation. The
+  // internal path separator is the ESC character. 
+  ///////////////////////////////////////////////////////////////////
+
+  len = strlen(szPath); 
+  tempPath = (char*)malloc(len * sizeof(char) + 1);
+  i=0;
+  while (szPath[i] != 0) {
+    if (szPath[i] == szPath[0]) {
+      tempPath[i] = JSON_PATH_SEP;
+    }
+    else {
+      tempPath[i] = szPath[i];
+    }
+    i++;
+  }
+  tempPath[i] = 0;
 
   if (CS_FAIL(CSJSON_PRIVATE_IsNumeric(szValue))) {
     return CS_FAILURE;
   }
 
   if (CS_SUCCEED(CSMAP_Lookup(This->Object,
-                              szPath,
+                              tempPath,
                               (void**)(&ppve),
                               &size)))
   {
+    free(tempPath);
+
     valueSize = strlen(szValue);
 
     switch(ppve->type) {
@@ -3590,6 +3712,9 @@ CSRESULT
 
     return CS_SUCCESS;
   }
+  else {
+    free(tempPath);
+  }
 
   return CS_FAILURE;
 }
@@ -3608,12 +3733,36 @@ CSRESULT
   long valueSize;
   long keySize;
   long size;
+  long len;
+  long i;
+
+  char* tempPath;
+
+  ///////////////////////////////////////////////////////////////////
+  // Convert submitted path to internal representation. The
+  // internal path separator is the ESC character. 
+  ///////////////////////////////////////////////////////////////////
+
+  len = strlen(szPath); 
+  tempPath = (char*)malloc(len * sizeof(char) + 1);
+  i=0;
+  while (szPath[i] != 0) {
+    if (szPath[i] == szPath[0]) {
+      tempPath[i] = JSON_PATH_SEP;
+    }
+    else {
+      tempPath[i] = szPath[i];
+    }
+    i++;
+  }
+  tempPath[i] = 0;
 
   if (CS_SUCCEED(CSMAP_Lookup(This->Object,
-                              szPath,
+                              tempPath,
                               (void**)(&ppve),
                               &size)))
   {
+    free(tempPath);
 
     valueSize = strlen(szValue);
 
@@ -3724,6 +3873,9 @@ CSRESULT
 
     return CS_SUCCESS;
   }
+  else {
+    free(tempPath);
+  }
 
   return CS_FAILURE;
 }
@@ -3737,14 +3889,15 @@ CSRESULT
 
   CSRESULT Rc;
   CSJSON_DIRENTRY* ppdire;
-  CSJSON_DIRENTRY* pp_testDire;
   CSJSON_DIRENTRY dire;
   CSJSON_LSENTRY lse;
 
   char* szNewPath;
+  char* tempPath;
 
   char szIndex[11];
 
+  long i;
   long size;
   long len;
   long indexLen;
@@ -3755,8 +3908,27 @@ CSRESULT
     return CS_FAILURE;
   }
 
+  ///////////////////////////////////////////////////////////////////
+  // Convert submitted path to internal representation. The
+  // internal path separator is the ESC character. 
+  ///////////////////////////////////////////////////////////////////
+
+  len = strlen(szPath); 
+  tempPath = (char*)malloc(len * sizeof(char) + 1);
+  i=0;
+  while (szPath[i] != 0) {
+    if (szPath[i] == szPath[0]) {
+      tempPath[i] = JSON_PATH_SEP;
+    }
+    else {
+      tempPath[i] = szPath[i];
+    }
+    i++;
+  }
+  tempPath[i] = 0;
+
   if (CS_SUCCEED(CSMAP_Lookup(This->Object,
-                              szPath,
+                              tempPath,
                               (void**)(&ppdire),
                               &size)))
   {
@@ -3764,15 +3936,14 @@ CSRESULT
 
       case JSON_TYPE_ARRAY:
 
-        len = strlen(szPath);
         sprintf(szIndex, "%ld", ppdire->numItems);
         indexLen = strlen(szIndex);
 
-        if (szPath[1] == 0) {
+        if (tempPath[1] == 0) {
           totalSize = len + indexLen + 1;
           // allocate for base path, and the next index
           szNewPath = (char*)malloc(totalSize * sizeof(char));
-          memcpy(szNewPath, szPath, len);
+          memcpy(szNewPath, tempPath, len);
           memcpy(&szNewPath[len], szIndex, indexLen);
           szNewPath[len+indexLen] = 0;
         }
@@ -3780,16 +3951,17 @@ CSRESULT
           totalSize = len + indexLen + 2;
           // allocate for base path, a slash and the next index
           szNewPath = (char*)malloc(totalSize * sizeof(char));
-          memcpy(szNewPath, szPath, len);
+          memcpy(szNewPath, tempPath, len);
           // Check if path ends with a slash; if so, then the 
           // parent is an object with empty (null) key and we 
           // don't add a slash to the path
-          if (szPath[len-1] == '/') {
+          if (szPath[len-1] == JSON_PATH_SEP) {
             memcpy(&szNewPath[len], szIndex, indexLen);
             szNewPath[len+indexLen] = 0;
           }
           else {
-            szNewPath[len] = '/';
+            //szNewPath[len] = '/';
+            szNewPath[len] = JSON_PATH_SEP;
             memcpy(&szNewPath[len+1], szIndex, indexLen);
             szNewPath[len+indexLen+1] = 0;
           }
@@ -3828,10 +4000,19 @@ CSRESULT
       case JSON_TYPE_OBJECT:
 
         if (szKey == 0) {
+          free(tempPath);
           return CS_FAILURE;
         }
 
-        len = strlen(szPath);
+        // Check if key already exists under the path
+        if (CS_SUCCEED(CSMAP_Lookup(ppdire->Listing,
+                                    szKey,
+                                    (void**)(&lse),
+                                    &size))) {
+          free(tempPath);
+          Rc = CS_FAILURE;
+        }
+
         keySize = strlen(szKey);
         totalSize = len + keySize + 2;
 
@@ -3849,11 +4030,15 @@ CSRESULT
           if (szPath[1] == 0) {
 
             // A NULL key under the root has a special hash
-            totalSize = 3;
+            //totalSize = 3;
             // allocate for base path, and the key
             szNewPath = (char*)malloc(3 * sizeof(char));
+            szNewPath[0] = JSON_PATH_SEP;
+            szNewPath[1] = JSON_PATH_SEP;
+            /*
             szNewPath[0] = '/';
-            szNewPath[1] = '/'; 
+            szNewPath[1] = '/';
+            */
             szNewPath[2] = 0;
           }
           else {
@@ -3861,8 +4046,9 @@ CSRESULT
             totalSize = len + 3;
             // allocate for base path, a slash and the key
             szNewPath = (char*)malloc(totalSize * sizeof(char));
-            memcpy(szNewPath, szPath, len);
-            szNewPath[len] = '/';
+            memcpy(szNewPath, tempPath, len);
+            szNewPath[len] = JSON_PATH_SEP;
+            //szNewPath[len] = '/';
             szNewPath[len+1] = 0;
           }
         } 
@@ -3872,7 +4058,7 @@ CSRESULT
               totalSize = len + keySize + 1;
             // allocate for base path, and the key
             szNewPath = (char*)malloc(totalSize * sizeof(char));
-            memcpy(szNewPath, szPath, len);
+            memcpy(szNewPath, tempPath, len);
             memcpy(&szNewPath[len], szKey, keySize);
             szNewPath[len+keySize] = 0;
           }
@@ -3880,56 +4066,45 @@ CSRESULT
             totalSize = len + keySize + 2;
             // allocate for base path, a slash and the key
             szNewPath = (char*)malloc(totalSize * sizeof(char));
-            memcpy(szNewPath, szPath, len);
-            szNewPath[len] = '/';
+            memcpy(szNewPath, tempPath, len);
+            szNewPath[len] = JSON_PATH_SEP;
+            //szNewPath[len] = '/';
             memcpy(&szNewPath[len+1], szKey, keySize);
-            szNewPath[len+keySize+1] = 0;
+            szNewPath[len+1+keySize] = 0;
           }
         }
 
-        // Check if key exists
-        if (CS_SUCCEED(CSMAP_Lookup(This->Object,
-                                    szNewPath,
-                                    (void**)(&pp_testDire),
-                                    &size))) {
+        lse.szKey = (char*)malloc((keySize+1) * sizeof(char));
+        memcpy(lse.szKey, szKey, keySize+1);
+        lse.keySize = keySize+1;
+        lse.type = type;
+        lse.valueSize = 0;
+        lse.szValue = 0;
 
-          free(szNewPath);
-          Rc = CS_FAILURE;
-        }
-        else {
-
-          lse.szKey = (char*)malloc((keySize+1) * sizeof(char));
-          memcpy(lse.szKey, szKey, keySize+1);
-          lse.keySize = keySize+1;
-          lse.type = type;
-          lse.valueSize = 0;
-          lse.szValue = 0;
-
-          CSMAP_Insert(ppdire->Listing, szKey,
+        CSMAP_Insert(ppdire->Listing, szKey,
                        (void*)(&lse), sizeof(CSJSON_LSENTRY));
 
-          ppdire->numItems++;
+        ppdire->numItems++;
 
-          dire.type = type;
-          dire.numItems = 0;
+        dire.type = type;
+        dire.numItems = 0;
 
-          if (type == JSON_TYPE_ARRAY) {
-            dire.Listing = CSLIST_Constructor();
-          }
-          else {
-            dire.Listing = CSMAP_Constructor();
-          }
-
-          CSMAP_Insert(This->Object, szNewPath,
-                      (void*)(&dire), sizeof(CSJSON_DIRENTRY));
-
-          // two braces/brackets and possibly a comma and two
-          This->nextSlabSize = This->nextSlabSize + lse.keySize + 6;
-
-          free(szNewPath);
-          Rc = CS_SUCCESS;
+        if (type == JSON_TYPE_ARRAY) {
+          dire.Listing = CSLIST_Constructor();
+        }
+        else {
+          dire.Listing = CSMAP_Constructor();
         }
 
+        CSMAP_Insert(This->Object, szNewPath,
+                      (void*)(&dire), sizeof(CSJSON_DIRENTRY));
+
+        // two braces/brackets and possibly a comma and two
+        This->nextSlabSize = This->nextSlabSize + lse.keySize + 6;
+
+        free(szNewPath);
+        Rc = CS_SUCCESS;
+ 
         break;
 
       default:
@@ -3940,6 +4115,7 @@ CSRESULT
     Rc = CS_FAILURE;
   }
 
+  free(tempPath);
   return Rc;
 }
 
