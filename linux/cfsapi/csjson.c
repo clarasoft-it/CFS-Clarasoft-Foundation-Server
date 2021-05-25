@@ -56,7 +56,7 @@
 #define JSON_TYPE_STRING     52
 #define JSON_TYPE_UNKNOWN    99
 
-#define JSON_PATH_SEP       '\x1B'
+#define JSON_PATH_SEP       '*' //'\x1B'
 
 typedef struct tagCSJSON
 {
@@ -1321,6 +1321,8 @@ CSRESULT
 
   char* pszKey;
 
+  char rootPath[2];
+
   long valueSize;
   long index;
   long count;
@@ -1394,7 +1396,9 @@ CSRESULT
 
         case JSON_TOK_LBRACE:
 
-          if (CS_FAIL(CSJSON_PRIVATE_O(This, &index, "/", 1))) {
+          rootPath[0] = JSON_PATH_SEP;
+          rootPath[1] = 0; 
+          if (CS_FAIL(CSJSON_PRIVATE_O(This, &index, rootPath/*"/"*/, 1))) {
             goto CSJSON_PARSE_FAILURE_CLEANUP;
           }
 
@@ -1402,7 +1406,9 @@ CSRESULT
 
         case JSON_TOK_LBRACKET:
 
-          if (CS_FAIL(Rc = CSJSON_PRIVATE_A(This, &index, "/", 1))) {
+          rootPath[0] = JSON_PATH_SEP;
+          rootPath[1] = 0; 
+          if (CS_FAIL(Rc = CSJSON_PRIVATE_A(This, &index, rootPath/*"/"*/, 1))) {
             goto CSJSON_PARSE_FAILURE_CLEANUP;
           }
 
@@ -1666,15 +1672,15 @@ CSRESULT
                 newPathLen = len + 3;
                 pNewPath = (char*)malloc(newPathLen * sizeof(char));
                 memcpy(pNewPath, szPath, len);
-                pNewPath[len] = '/';
-                pNewPath[len+1] = '/';
+                pNewPath[len] = JSON_PATH_SEP; //'/';
+                pNewPath[len+1] = JSON_PATH_SEP; //'/';
                 pNewPath[len+2] = 0;
               }
               else {
                 newPathLen = len + 1 + ls_pti->size;
                 pNewPath = (char*)malloc(newPathLen * sizeof(char));
                 memcpy(pNewPath, szPath, len);
-                pNewPath[len] = '/';
+                pNewPath[len] = JSON_PATH_SEP; //'/';
                 memcpy(&pNewPath[len+1], ls_pti->szToken, ls_pti->size);
               }
             }
@@ -1685,7 +1691,7 @@ CSRESULT
                 newPathLen = len + 2;
                 pNewPath = (char*)malloc(newPathLen * sizeof(char));
                 memcpy(pNewPath, szPath, len);
-                pNewPath[len] = '/';
+                pNewPath[len] = JSON_PATH_SEP; //'/';
                 pNewPath[len+1] = 0;
               }
               else {
@@ -1725,15 +1731,15 @@ CSRESULT
                 newPathLen = len + 3;
                 pNewPath = (char*)malloc(newPathLen * sizeof(char));
                 memcpy(pNewPath, szPath, len);
-                pNewPath[len] = '/';
-                pNewPath[len+1] = '/';
+                pNewPath[len] = JSON_PATH_SEP; //'/';
+                pNewPath[len+1] = JSON_PATH_SEP; //'/';
                 pNewPath[len+2] = 0;
               }
               else {
                 newPathLen = len + 1 + ls_pti->size;
                 pNewPath = (char*)malloc(newPathLen * sizeof(char));
                 memcpy(pNewPath, szPath, len);
-                pNewPath[len] = '/';
+                pNewPath[len] = JSON_PATH_SEP; //'/';
                 memcpy(&pNewPath[len+1], ls_pti->szToken, ls_pti->size);
               }
             }
@@ -1744,7 +1750,7 @@ CSRESULT
                 newPathLen = len + 2;
                 pNewPath = (char*)malloc(newPathLen * sizeof(char));
                 memcpy(pNewPath, szPath, len);
-                pNewPath[len] = '/';
+                pNewPath[len] = JSON_PATH_SEP; //'/';
                 pNewPath[len+1] = 0;
               }
               else {
@@ -1988,7 +1994,7 @@ CSRESULT
               // has a null (empty) key. In this case,
               // we don't add another slash
 
-              if (szPath[len-1] == '/') {
+              if (szPath[len-1] == JSON_PATH_SEP /*'/'*/) {
 
                 // allocate enough space for path and
                 // 10 digits and the NULL
@@ -2007,7 +2013,7 @@ CSRESULT
 
                 szNewPath = (char*)malloc((len + 12) * sizeof(char));
                 memcpy(szNewPath, szPath, len);
-                szNewPath[len] = '/';
+                szNewPath[len] = JSON_PATH_SEP; //'/';
                 sprintf(szIndex, "%ld", curIndex);
                 indexLen = strlen(szIndex) + 1;  // take NULL into account
                 memcpy(&szNewPath[len+1], szIndex, indexLen);
@@ -2053,7 +2059,7 @@ CSRESULT
               // has a null (empty) key. In this case,
               // we don't add another slash
 
-              if (szPath[len-1] == '/') {
+              if (szPath[len-1] == JSON_PATH_SEP/*'/'*/) {
 
                 // allocate enough space for path and
                 // 10 digits and the NULL
@@ -2072,7 +2078,7 @@ CSRESULT
 
                 szNewPath = (char*)malloc(len + 12 * sizeof(char));
                 memcpy(szNewPath, szPath, len);
-                szNewPath[len] = '/';
+                szNewPath[len] = JSON_PATH_SEP; //'/';
                 sprintf(szIndex, "%ld", curIndex);
                 indexLen = strlen(szIndex) + 1;  // take NULL into account
                 memcpy(&szNewPath[len+1], szIndex, indexLen);
@@ -3955,15 +3961,19 @@ CSRESULT
           // Check if path ends with a slash; if so, then the 
           // parent is an object with empty (null) key and we 
           // don't add a slash to the path
-          if (szPath[len-1] == JSON_PATH_SEP) {
+          if (tempPath[len-1] == JSON_PATH_SEP) {
+
+            //memcpy(&szNewPath[len], szIndex, indexLen);
+            //szNewPath[len+indexLen] = 0;
+
+            //szNewPath[len] = JSON_PATH_SEP;
             memcpy(&szNewPath[len], szIndex, indexLen);
-            szNewPath[len+indexLen] = 0;
+            szNewPath[len+indexLen+1] = 0;
           }
           else {
-            //szNewPath[len] = '/';
             szNewPath[len] = JSON_PATH_SEP;
             memcpy(&szNewPath[len+1], szIndex, indexLen);
-            szNewPath[len+indexLen+1] = 0;
+            szNewPath[len+indexLen+2] = 0;
           }
         }
 
@@ -4016,13 +4026,45 @@ CSRESULT
         keySize = strlen(szKey);
         totalSize = len + keySize + 2;
 
+        // Are we root?
+        if (szPath[1] == 0) {
+          if (keySize == 0) { 
+            // allocate for base path, and the key
+            szNewPath = (char*)malloc(3 * sizeof(char));
+            szNewPath[0] = JSON_PATH_SEP;
+            szNewPath[1] = JSON_PATH_SEP;
+            szNewPath[2] = 0;
+          }
+          else {
+            szNewPath = (char*)malloc(keySize * sizeof(char) + 2);
+            szNewPath[0] = JSON_PATH_SEP;
+            memcpy(&szNewPath[1], szKey, keySize);
+            szNewPath[1+keySize] = 0;
+          }
+        }
+        else {
+          if (keySize == 0) { 
+            szNewPath = (char*)malloc(len * sizeof(char) + 2);
+            memcpy(szNewPath, tempPath, len);
+            szNewPath[len] = JSON_PATH_SEP;
+            szNewPath[len+1] = 0;
+          }
+          else {
+            szNewPath = (char*)malloc(((len + keySize) * sizeof(char)) + 2);
+            memcpy(szNewPath, tempPath, len);
+            szNewPath[len] = JSON_PATH_SEP;
+            memcpy(&szNewPath[len+1], szKey, keySize);
+            szNewPath[len + keySize + 1] = 0;
+          }
+        }
+
         ///////////////////////////////////////////////////////////////////
         // Check for empty key under root: this is a special case
         // that would cause the subpath to be the same as the root path.
         // Serialization would fall into an infinite regress. In this
         // particualr case, we assign a special path name (NULL key path)
         ///////////////////////////////////////////////////////////////////
-
+/*
         if (keySize == 0) {
 
           // Add slash at the end
@@ -4035,10 +4077,6 @@ CSRESULT
             szNewPath = (char*)malloc(3 * sizeof(char));
             szNewPath[0] = JSON_PATH_SEP;
             szNewPath[1] = JSON_PATH_SEP;
-            /*
-            szNewPath[0] = '/';
-            szNewPath[1] = '/';
-            */
             szNewPath[2] = 0;
           }
           else {
@@ -4073,7 +4111,7 @@ CSRESULT
             szNewPath[len+1+keySize] = 0;
           }
         }
-
+*/
         lse.szKey = (char*)malloc((keySize+1) * sizeof(char));
         memcpy(lse.szKey, szKey, keySize+1);
         lse.keySize = keySize+1;
