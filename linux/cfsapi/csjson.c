@@ -173,6 +173,9 @@ void
   CSJSON_DIRENTRY* pdire;
   CSJSON_LSENTRY* plse;
 
+  if (*This == 0) {
+    return;
+  }
   // Cleanup the JSON object previously built
 
   CSMAP_IterStart((*This)->Object);
@@ -1424,6 +1427,10 @@ CSRESULT
   long i;
   long size;
 
+  if (pJsonString == 0) {
+    return CS_FAILURE;
+  }
+
   // Cleanup the previous object
 
   CSMAP_IterStart(This->Object);
@@ -2274,6 +2281,10 @@ CSRESULT
 
   CSJSON_DIRENTRY* lpdire;
 
+  if (szPath == 0 || pdire == 0) {
+    return CS_FAILURE;
+  }
+
   ///////////////////////////////////////////////////////////////////
   // Convert submitted path to internal representation. The
   // internal path separator is the ESC character. 
@@ -2330,6 +2341,10 @@ CSRESULT CSJSON_LookupKey
 
   CSJSON_LSENTRY* lplse;
   CSJSON_DIRENTRY* lpdire;
+
+  if (szPath == 0 || szKey == 0 || plse == 0) {
+    return CS_FAILURE;
+  }
 
   ///////////////////////////////////////////////////////////////////
   // Convert submitted path to internal representation. The
@@ -2409,6 +2424,10 @@ CSRESULT
 
   CSJSON_LSENTRY* lplse;
   CSJSON_DIRENTRY* lpdire;
+
+  if (szPath == 0 || plse == 0) {
+    return CS_FAILURE;
+  }
 
   ///////////////////////////////////////////////////////////////////
   // Convert submitted path to internal representation. The
@@ -2742,6 +2761,10 @@ long
   long curPos;
 
   char szCanonicalPath[2];
+
+  if (szPath == 0 || szOutStream == 0) {
+    return CS_FAILURE;
+  }
 
   ////////////////////////////////////////////////////////////////////////
   // Allocate slab, if the present one is too small:
@@ -3336,6 +3359,10 @@ CSRESULT
   CSJSON_LSENTRY lse;
   CSJSON_LSENTRY* plse;
 
+  if (szPath == 0) {
+    return CS_FAILURE;
+  }
+
   if (boolValue != JSON_TYPE_BOOL_FALSE) {
     boolValue = JSON_TYPE_BOOL_TRUE;
   }
@@ -3488,6 +3515,10 @@ CSRESULT
 
   char* tempPath;
 
+  if (szPath == 0) {
+    return CS_FAILURE;
+  }
+
   ///////////////////////////////////////////////////////////////////
   // Convert submitted path to internal representation. The
   // internal path separator is the ESC character. 
@@ -3637,6 +3668,10 @@ CSRESULT
   long i;
 
   char* tempPath;
+
+  if (szPath == 0) {
+    return CS_FAILURE;
+  }
 
   ///////////////////////////////////////////////////////////////////
   // Convert submitted path to internal representation. The
@@ -3797,6 +3832,10 @@ CSRESULT
   long i;
 
   char* tempPath;
+
+  if (szPath == 0 || szValue == 0) {
+    return CS_FAILURE;
+  }
 
   ///////////////////////////////////////////////////////////////////
   // Convert submitted path to internal representation. The
@@ -4178,6 +4217,10 @@ CSRESULT
   long len;
 
   char* tempPath;
+
+  if (szPath == 0) {
+    return CS_FAILURE;
+  }
 
   CSLIST_Clear(listing);
 
