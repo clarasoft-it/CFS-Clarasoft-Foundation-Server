@@ -35,14 +35,14 @@
 #define JSON_UNICODE_NOCONVERT   0
 #define JSON_UNICODE_CONVERT     1
 
-#define JSON_TYPE_BOOL_FALSE  0
-#define JSON_TYPE_BOOL_TRUE   1
-#define JSON_TYPE_NULL        3
-#define JSON_TYPE_OBJECT     10
-#define JSON_TYPE_ARRAY      20
-#define JSON_TYPE_NUMERIC    51
-#define JSON_TYPE_STRING     52
-#define JSON_TYPE_UNKNOWN    99
+#define JSON_TYPE_BOOL_FALSE     0
+#define JSON_TYPE_BOOL_TRUE      1
+#define JSON_TYPE_NULL           3
+#define JSON_TYPE_OBJECT        10
+#define JSON_TYPE_ARRAY         20
+#define JSON_TYPE_NUMERIC       51
+#define JSON_TYPE_STRING        52
+#define JSON_TYPE_UNKNOWN       99
 
 typedef void* CSJSON;
 
@@ -152,7 +152,7 @@ long
 CSRESULT
   CSJSON_Dump
     (CSJSON This,
-     CSLIST values);
+     char sep);
 
 
 #endif
