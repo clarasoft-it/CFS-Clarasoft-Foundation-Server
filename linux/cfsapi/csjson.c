@@ -3466,10 +3466,7 @@ CSRESULT
           lse.szValue = 0;
           lse.type = boolValue;
 
-//          CSMAP_Insert(ppve->Listing, szKey,
-//                       (void*)(&lse), sizeof(CSJSON_LSENTRY));
-
-          CSMAP_Insert(ppve->Listing, lse.szKey,
+          CSMAP_InsertKeyRef(ppve->Listing, lse.szKey,
                        (void*)(&lse), sizeof(CSJSON_LSENTRY));
 
           ppve->numItems++;
