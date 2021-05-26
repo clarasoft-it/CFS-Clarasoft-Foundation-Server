@@ -3166,8 +3166,14 @@ long
 
                 if (pathLen > 1) { // we are not root path
                   if (szPath[pathLen-1] == JSON_PATH_SEP) {
-                    memcpy(&szSubPath[pathLen], pls->szKey, pls->keySize);
-                    szSubPath[pathLen+pls->keySize] = 0;
+                    if (pls->keySize > 1) {
+                      memcpy(&szSubPath[pathLen], pls->szKey, pls->keySize);
+                      szSubPath[pathLen+pls->keySize] = 0;
+                    }
+                    else {
+                      szSubPath[pathLen] = JSON_PATH_SEP;
+                      szSubPath[pathLen+1] = 0;
+                    }
                   }
                   else {
                     szSubPath[pathLen] = JSON_PATH_SEP;
