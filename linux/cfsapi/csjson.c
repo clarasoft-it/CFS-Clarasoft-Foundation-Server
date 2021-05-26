@@ -249,6 +249,8 @@ CSRESULT
   long n;
   long k;
   long t;
+  long tok_i;
+  long tok_j;
   long cpyStart;
   long cpyLen;
   long curTokenIndex;
@@ -532,8 +534,59 @@ CSRESULT
           memcpy(ti.szToken, &(szJsonString[startToken]), tempIndex);
         }
 
+        ti.szToken[ti.size] = 0;
+
+        // We must clean up escape characters (\)
+        // note that the token size includes the NULL.
+  
+        for (tok_i=0, tok_j=0; tok_i<ti.size; tok_i++, tok_j++) {
+
+          if (ti.szToken[tok_i] == '\\') {
+
+            // if this is not a unicode escape sequence ...
+
+            if (ti.szToken[tok_i+1] != 'u') {
+          
+              tok_i++;
+              switch(ti.szToken[tok_i]) {
+                case '\\':
+                  ti.szToken[tok_j] = '\\';
+                  break;
+                case '"':
+                  ti.szToken[tok_j] = '"';
+                  break;
+                case '/':
+                  ti.szToken[tok_j] = '/';
+                  break;
+                case 'b':
+                  ti.szToken[tok_j] = '\b';
+                  break;
+                case 'f':
+                  ti.szToken[tok_j] = '\f';
+                  break;
+                case 'n':
+                  ti.szToken[tok_j] = '\n';
+                  break;
+                case 'r':
+                  ti.szToken[tok_j] = '\r';
+                  break;
+                case 't':
+                  ti.szToken[tok_j] = '\t';
+                  break;
+                default:
+                  // Should never get here... let's skip it
+                  break;
+              }
+            }
+          }
+          else {
+            ti.szToken[tok_j] = ti.szToken[tok_i];
+          }
+        }
+
+        ti.size = tok_j;
+
         ti.type = JSON_TOK_STRING;
-        ti.szToken[ti.size-1] = 0;
 
         CSLIST_Insert(This->Tokens, &ti,
                       sizeof(CSJSON_TOKENINFO), CSLIST_BOTTOM);
@@ -841,6 +894,8 @@ CSRESULT
 
   long n;
   long k;
+  long tok_i;
+  long tok_j;
   long tempIndex;
   long startToken;
 
@@ -1013,7 +1068,57 @@ CSRESULT
         ti.size = tempIndex+1;
         ti.szToken = (char*)malloc(ti.size * sizeof(char));
         memcpy(ti.szToken, &(szJsonString[startToken]), tempIndex);
-        ti.szToken[tempIndex] = 0;
+        ti.szToken[ti.size-1] = 0;
+
+        // We must clean up escape characters (\)
+        // note that the token size includes the NULL.
+  
+        for (tok_i=0, tok_j=0; tok_i<ti.size; tok_i++, tok_j++) {
+
+          if (ti.szToken[tok_i] == '\\') {
+
+            // if this is not a unicode escape sequence ...
+
+            if (ti.szToken[tok_i+1] != 'u') {
+          
+              tok_i++;
+              switch(ti.szToken[tok_i]) {
+                case '\\':
+                  ti.szToken[tok_j] = '\\';
+                  break;
+                case '"':
+                  ti.szToken[tok_j] = '"';
+                  break;
+                case '/':
+                  ti.szToken[tok_j] = '/';
+                  break;
+                case 'b':
+                  ti.szToken[tok_j] = '\b';
+                  break;
+                case 'f':
+                  ti.szToken[tok_j] = '\f';
+                  break;
+                case 'n':
+                  ti.szToken[tok_j] = '\n';
+                  break;
+                case 'r':
+                  ti.szToken[tok_j] = '\r';
+                  break;
+                case 't':
+                  ti.szToken[tok_j] = '\t';
+                  break;
+                default:
+                  // Should never get here... let's skip it
+                  break;
+              }
+            }
+          }
+          else {
+            ti.szToken[tok_j] = ti.szToken[tok_i];
+          }
+        }
+
+        ti.size = tok_j;
 
         CSLIST_Insert(This->Tokens, &ti,
                       sizeof(CSJSON_TOKENINFO), CSLIST_BOTTOM);
@@ -1585,7 +1690,6 @@ CSRESULT
 
   char* pNewPath;
 
-  long m,n;
   long newPathLen;
 
   CSRESULT Rc;
@@ -1599,44 +1703,6 @@ CSRESULT
   if (Rc == CS_SUCCESS) {
 
     if (pti->type == JSON_TOK_STRING) {
-
-      // This is the key field; we must clean up escape characters (\)
-      // note that the token size includes the NULL.
-
-      for (m=0, n=0; m<pti->size; m++, n++) {
-
-        if (pti->szToken[m] == '\\') {
-
-          // if this is not a unicode escape sequence ...
-
-          if (pti->szToken[m+1] != 'u') {
-          
-            m++;
-            switch(pti->szToken[m]) {
-              case 'b':
-                pti->szToken[n] = '\b';
-                break;
-              case 'f':
-                pti->szToken[n] = '\f';
-                break;
-              case 'n':
-                pti->szToken[n] = '\n';
-                break;
-              case 'r':
-                pti->szToken[n] = '\r';
-                break;
-              case 't':
-                pti->szToken[n] = '\t';
-                break;
-              default:
-                // Should never get here... let's skip it
-                break;
-            }
-          }
-        }
-      }
-
-      pti->size = n;
 
       ls_pti = pti; // This is a pointer to the token and will be inserted
                     // into the directory listing; this avoids copying
@@ -1778,45 +1844,6 @@ CSRESULT
             lse.szKey = ls_pti->szToken;
             lse.keySize = ls_pti->size;
             lse.type = JSON_TYPE_STRING;
-
-            // We must clean up escape characters (\) from the value
-            // note that the token size includes the NULL.
-
-            for (m=0, n=0; m<pti->size; m++, n++) {
-
-              if (pti->szToken[m] == '\\') {
-
-                // if this is not a unicode escape sequence ...
-
-                if (pti->szToken[m+1] != 'u') {
-          
-                  m++;
-                  switch(pti->szToken[m]) {
-                    case 'b':
-                      pti->szToken[n] = '\b';
-                      break;
-                    case 'f':
-                      pti->szToken[n] = '\f';
-                      break;
-                    case 'n':
-                      pti->szToken[n] = '\n';
-                      break;
-                    case 'r':
-                      pti->szToken[n] = '\r';
-                      break;
-                    case 't':
-                      pti->szToken[n] = '\t';
-                      break;
-                    default:
-                      // Should never get here... let's skip it
-                      break;
-                  }
-                }
-              }
-            }
-
-            pti->size = n;
-
             lse.szValue = pti->szToken;
             lse.valueSize = pti->size;
 
@@ -1957,7 +1984,8 @@ CSRESULT
   long commaFlag;
   long newPathLen;
   long count;
-  long i, m, n;
+  long i;
+  //long m, n;
 
   char* szNewPath;
 
@@ -2152,44 +2180,6 @@ CSRESULT
 
             if (pti->type == JSON_TOK_STRING) {
 
-              // We must clean up escape characters (\) from the value
-              // note that the token size includes the NULL.
-
-              for (m=0, n=0; m<pti->size; m++, n++) {
-
-                if (pti->szToken[m] == '\\') {
-
-                  // if this is not a unicode escape sequence ...
-
-                  if (pti->szToken[m+1] != 'u') {
-          
-                    m++;
-                    switch(pti->szToken[m]) {
-                      case 'b':
-                        pti->szToken[n] = '\b';
-                        break;
-                      case 'f':
-                        pti->szToken[n] = '\f';
-                        break;
-                      case 'n':
-                        pti->szToken[n] = '\n';
-                        break;
-                      case 'r':
-                        pti->szToken[n] = '\r';
-                        break;
-                      case 't':
-                        pti->szToken[n] = '\t';
-                        break;
-                      default:
-                        // Should never get here... let's skip it
-                        break;
-                    }
-                  }
-                }
-              }
-
-              pti->size = n;
-
               lse.szKey = 0;
               lse.szValue = pti->szToken;
               lse.valueSize = pti->size;
@@ -2317,7 +2307,7 @@ CSRESULT
   tempPath[i] = 0;
 
   if (CS_SUCCEED(CSMAP_Lookup(This->Object,
-                             szPath,
+                             tempPath,
                              (void**)(&lpdire),
                              &size))) {
 
@@ -2425,11 +2415,35 @@ CSRESULT
      CSJSON_LSENTRY* plse) {
 
   long size;
+  long len;
+  long i;
+
+  char* tempPath;
+
   CSJSON_LSENTRY* lplse;
   CSJSON_DIRENTRY* lpdire;
 
+  ///////////////////////////////////////////////////////////////////
+  // Convert submitted path to internal representation. The
+  // internal path separator is the ESC character. 
+  ///////////////////////////////////////////////////////////////////
+
+  len = strlen(szPath); 
+  tempPath = (char*)malloc(len * sizeof(char) + 1);
+  i=0;
+  while (szPath[i] != 0) {
+    if (szPath[i] == szPath[0]) {
+      tempPath[i] = JSON_PATH_SEP;
+    }
+    else {
+      tempPath[i] = szPath[i];
+    }
+    i++;
+  }
+  tempPath[i] = 0;
+
   if (CS_SUCCEED(CSMAP_Lookup(This->Object,
-                             szPath,
+                             tempPath,
                              (void**)(&lpdire),
                              &size))) {
 
@@ -2454,8 +2468,10 @@ CSRESULT
           plse->szValue = 0;
           plse->valueSize = 0;
         }
-
-        return CS_SUCCESS;      }
+  
+        free(tempPath);
+        return CS_SUCCESS;     
+      }
     }
   }
 
@@ -2464,13 +2480,15 @@ CSRESULT
   plse->szValue = 0;
   plse->valueSize = 0;
 
+  free(tempPath);
+
   return CS_FAILURE;
 }
 
 CSRESULT
   CSJSON_Dump
     (CSJSON* This,
-     CSLIST values) {
+     char sep) {
 
   long count;
   long i, j;
@@ -2518,7 +2536,7 @@ CSRESULT
           j=0;
           while (szKey[j] != 0) {
             if (szKey[j] == JSON_PATH_SEP) {
-              tempKey[j] = '|';
+              tempKey[j] = sep;
             }
             else {
               tempKey[j] = szKey[j];
@@ -2573,7 +2591,7 @@ CSRESULT
           j=0;
           while (szKey[j] != 0) {
             if (szKey[j] == JSON_PATH_SEP) {
-              tempKey[j] = '|';
+              tempKey[j] = sep;
             }
             else {
               tempKey[j] = szKey[j];
