@@ -231,7 +231,7 @@ void
 }
 
 CSRESULT
-  CSJSON_PRIVATE_Tokenize_UNICODE_CONVERT
+  CSJSON_PRIVATE_Tokenize
     (CSJSON *This,
      char *szJsonString) {
 
@@ -877,536 +877,6 @@ CSRESULT
 }
 
 CSRESULT
-  CSJSON_PRIVATE_Tokenize_UNICODE_NOCONVERT
-    (CSJSON *This,
-     char *szJsonString) {
-
-  int Stop;
-  int haveDot;
-  int haveExp;
-
-  long n;
-  long k;
-  long tok_i;
-  long tok_j;
-  long tempIndex;
-  long startToken;
-
-  char szBoolBuffer[6];
-
-  char* pCurByte;
-
-  CSJSON_TOKENINFO ti;
-
-  n = 0;
-  pCurByte = szJsonString;
-
-  while (pCurByte[n] != 0) 
-  {
-    switch (szJsonString[n])
-    {
-
-    case ',':
-
-      ti.szToken = 0;
-      ti.type = JSON_TOK_COMMA;
-
-      CSLIST_Insert(This->Tokens, &ti,
-                    sizeof(CSJSON_TOKENINFO), CSLIST_BOTTOM);
-      break;
-
-    case '{':
-
-      ti.szToken = 0;
-      ti.type = JSON_TOK_LBRACE;
-
-      CSLIST_Insert(This->Tokens, &ti,
-                    sizeof(CSJSON_TOKENINFO), CSLIST_BOTTOM);
-
-      break;
-
-    case '}':
-
-      ti.szToken = 0;
-      ti.type = JSON_TOK_RBRACE;
-
-      CSLIST_Insert(This->Tokens, &ti,
-                    sizeof(CSJSON_TOKENINFO), CSLIST_BOTTOM);
-
-      break;
-
-    case '[':
-
-      ti.szToken = 0;
-      ti.type = JSON_TOK_LBRACKET;
-
-      CSLIST_Insert(This->Tokens, &ti,
-                    sizeof(CSJSON_TOKENINFO), CSLIST_BOTTOM);
-
-      break;
-
-    case ']':
-
-      ti.szToken = 0;
-      ti.type = JSON_TOK_RBRACKET;
-
-      CSLIST_Insert(This->Tokens, &ti,
-                    sizeof(CSJSON_TOKENINFO), CSLIST_BOTTOM);
-
-      break;
-
-    case ':':
-
-      ti.szToken = 0;
-      ti.type = JSON_TOK_COLON;
-
-      CSLIST_Insert(This->Tokens, &ti,
-                    sizeof(CSJSON_TOKENINFO), CSLIST_BOTTOM);
-
-      break;
-
-    case '"':
-
-      Stop = 0;
-      tempIndex = 0;
-
-      n++;
-      startToken = n;
-      while (pCurByte[n] != 0 && !Stop)
-      {
-
-        ////////////////////////////////////////////////////////
-        //    We need to detect escaped characters;
-        ////////////////////////////////////////////////////////
-
-        switch (szJsonString[n])
-        {
-          case '\\':
-
-            tempIndex++;
-            n++; // examine next character
-
-            switch(szJsonString[n]) {
-
-              case '/':
-              case '\\':
-              case 't':
-              case 'r':
-              case 'n':
-              case 'b':
-              case 'f':
-              case '"':
-
-                // Legal escape sequence
-                tempIndex++;
-                n++; // examine next character
-                break;
-
-              case 'u':
-
-                // UNICODE escaped code point; next 4 characters must be numeric
-
-                tempIndex++;
-                n++; // examine next character
-
-                for (k=0; k<4; k++) {
-
-                  if (!((szJsonString[n] >= '0' && szJsonString[n] <= '9') ||  
-                        (szJsonString[n] >= 'a' && szJsonString[n] <= 'f') ||
-                        (szJsonString[n] >= 'A' && szJsonString[n] <= 'F'))) {
-
-                    goto CSJSON_PRIVATE_TOKENIZE_ERROR;
-                  }
-
-                  tempIndex++;
-                  n++; // examine next character
-                }
-
-                break;
-
-              default:
-
-                goto CSJSON_PRIVATE_TOKENIZE_ERROR;
-            }
-
-            break;
-
-          case '"':
-
-            Stop = 1;
-            break;
-
-          default:
-
-            if (szJsonString[n] >= 0 && szJsonString[n] <= 0x1F) {
-                // non-escaped control character
-                goto CSJSON_PRIVATE_TOKENIZE_ERROR;
-            }
-            else {
-              // character is valid
-              tempIndex++;
-              n++; // examine next character
-            }
-
-            break;
-        }
-      }
-
-      if (szJsonString[n] == '"')
-      {
-        // We copy the buffer as a NULL-terminated string; to transfer binary
-        // data in a JSON string, one should encode the data in BASE-64.
-
-        ti.type = JSON_TOK_STRING;
-        ti.size = tempIndex+1;
-        ti.szToken = (char*)malloc(ti.size * sizeof(char));
-        memcpy(ti.szToken, &(szJsonString[startToken]), tempIndex);
-        ti.szToken[ti.size-1] = 0;
-
-        // We must clean up escape characters (\)
-        // note that the token size includes the NULL.
-  
-        for (tok_i=0, tok_j=0; tok_i<ti.size; tok_i++, tok_j++) {
-
-          if (ti.szToken[tok_i] == '\\') {
-
-            // if this is not a unicode escape sequence ...
-
-            if (ti.szToken[tok_i+1] != 'u') {
-          
-              tok_i++;
-              switch(ti.szToken[tok_i]) {
-                case '\\':
-                  ti.szToken[tok_j] = '\\';
-                  break;
-                case '"':
-                  ti.szToken[tok_j] = '"';
-                  break;
-                case '/':
-                  ti.szToken[tok_j] = '/';
-                  break;
-                case 'b':
-                  ti.szToken[tok_j] = '\b';
-                  break;
-                case 'f':
-                  ti.szToken[tok_j] = '\f';
-                  break;
-                case 'n':
-                  ti.szToken[tok_j] = '\n';
-                  break;
-                case 'r':
-                  ti.szToken[tok_j] = '\r';
-                  break;
-                case 't':
-                  ti.szToken[tok_j] = '\t';
-                  break;
-                default:
-                  // Should never get here... let's skip it
-                  break;
-              }
-            }
-          }
-          else {
-            ti.szToken[tok_j] = ti.szToken[tok_i];
-          }
-        }
-
-        ti.size = tok_j;
-
-        CSLIST_Insert(This->Tokens, &ti,
-                      sizeof(CSJSON_TOKENINFO), CSLIST_BOTTOM);
-      }
-      else
-      {
-        goto CSJSON_PRIVATE_TOKENIZE_ERROR;
-      }
-
-      break;
-
-    default:
-
-      if ((szJsonString[n] >= '0' && szJsonString[n] <= '9') ||
-          (szJsonString[n] == '-'))
-      {
-        // Token may be numeric
-
-        tempIndex = 1;  // there is at least one digit
-        startToken = n;
-
-        Stop = 0;
-        haveDot = 0;
-        haveExp = 0;
-
-        n++;
-        while (pCurByte[n] != 0 && !Stop)
-        {
-          switch (szJsonString[n])
-          {
-            case '\t':
-            case '\r':
-            case '\n':
-            case ' ':
-            case ',':
-            case ':':
-            case '[':
-            case ']':
-            case '{':
-            case '}':
-
-              n--;
-              Stop = 1;
-              break;
-
-            default:
-
-              switch(szJsonString[n]) {
-
-                case '.':
-
-                  // Only one dot and it must precede the exponent character
-
-                  if (!haveDot && !haveExp) {
-
-                    // check that if first digit is zero, then there are no
-                    // other digits between the zero and the dot
-
-                    if (szJsonString[startToken] == '-') {
-                      if (szJsonString[startToken+1] == '0') {
-                        if (tempIndex == 2) {
-                          // Ok, number starts with
-                          // -0 and next character is dot
-                          tempIndex++;
-                          n++;
-                        }
-                        else {
-                          goto CSJSON_PRIVATE_TOKENIZE_ERROR;
-                        }
-                      }
-                      else {
-                        // Ok, number starts with - and some non-zero digit
-                        tempIndex++;
-                        n++;
-                      }
-                    }
-                    else {
-                      if (szJsonString[startToken] == '0') {
-                        if (tempIndex == 1) {
-                          // Ok, number starts with 0 and
-                          // next character is dot
-                          tempIndex++;
-                          n++;
-                        }
-                        else {
-                          goto CSJSON_PRIVATE_TOKENIZE_ERROR;
-                        }
-
-                      }
-                      else {
-                        // Ok, number starts with - and some non-zero digit
-                        tempIndex++;
-                        n++;
-                      }
-                    }
-
-                    haveDot = 1;
-                  }
-                  else {
-                    goto CSJSON_PRIVATE_TOKENIZE_ERROR;
-                  }
-
-                  break;
-
-                case '+':
-                case '-':
-
-                  // This must immediately follow the exponent character
-                  if (szJsonString[startToken+tempIndex-1] == 'e' ||
-                      szJsonString[startToken+tempIndex-1] == 'E') {
-                    tempIndex++;
-                    n++;
-                  }
-                  else {
-                    goto CSJSON_PRIVATE_TOKENIZE_ERROR;
-                  }
-
-                  break;
-
-                case 'e':
-                case 'E':
-
-                  if (!haveExp) {
-                    // This character must be preceded by a digit
-                    if (szJsonString[startToken+tempIndex-1] >= '0' &&
-                        szJsonString[startToken+tempIndex-1] <= '9') {
-                      tempIndex++;
-                      haveExp = 1;
-                      n++;
-                    }
-                    else {
-                      goto CSJSON_PRIVATE_TOKENIZE_ERROR; 
-                    }
-                  }
-                  else {
-                    goto CSJSON_PRIVATE_TOKENIZE_ERROR;
-                  }
-
-                  break;
-
-                default:
-
-                  if ((szJsonString[n] >= '0' && szJsonString[n] <= '9'))
-                  {
-                    if (szJsonString[startToken+tempIndex-1] == 'E' ||
-                        szJsonString[startToken+tempIndex-1] == 'e') {
-
-                      // If the previous character is the exponent
-                      // and we have a zero, we can ignore it because
-                      // exponenets don't have leading zeroes
-
-                      if (szJsonString[n] != '0') {
-                        tempIndex++;
-                      }
-                    }
-                    else {
-                      tempIndex++;
-                    }
-                    n++;
-                  }
-                  else {
-                    goto CSJSON_PRIVATE_TOKENIZE_ERROR;
-                  }
-
-                  break;
-              }
-
-              break;
-          }
-        }
-
-        ti.type = JSON_TOK_NUMERIC;
-        ti.size = tempIndex + 1;
-        ti.szToken = (char*)malloc((ti.size) * sizeof(char));
-        memcpy(ti.szToken, &(szJsonString[startToken]), ti.size-1);
-        ti.szToken[ti.size-1] = 0;
-
-        CSLIST_Insert(This->Tokens, &ti,
-                        sizeof(CSJSON_TOKENINFO), CSLIST_BOTTOM);
-      }
-      else {
-
-        if ((szJsonString[n] == 'f') ||
-            (szJsonString[n] == 't') ||
-            (szJsonString[n] == 'n'))
-        {
-
-          // Could be null or a boolean token
-
-          tempIndex = 0;
-          szBoolBuffer[tempIndex] = szJsonString[n];
-          startToken = n;
-          tempIndex++;
-
-          Stop = 0;
-
-          n++;
-          while (pCurByte[n] != 0 && !Stop && tempIndex < 6) 
-          {
-            switch (szJsonString[n])
-            {
-              case '\t':
-              case '\r':
-              case '\n':
-              case ' ':
-              case ',':
-              case ':':
-              case '[':
-              case ']':
-              case '{':
-              case '}':
-
-                n--;
-                Stop = 1;
-                break;
-
-              default:
-
-                szBoolBuffer[tempIndex] = szJsonString[n];
-                tempIndex++;
-                n++;
-                break;
-            }
-          }
-
-          szBoolBuffer[tempIndex] = 0;
-
-          if (!strcmp(szBoolBuffer, "false")) {
-
-            ti.type = JSON_TOK_BOOL_FALSE;
-            ti.szToken = 0;
-            CSLIST_Insert(This->Tokens, &ti,
-                          sizeof(CSJSON_TOKENINFO), CSLIST_BOTTOM);
-          }
-          else if (!strcmp(szBoolBuffer, "true")) {
-
-            ti.type = JSON_TOK_BOOL_TRUE;
-            ti.szToken = 0;
-            CSLIST_Insert(This->Tokens, &ti,
-                          sizeof(CSJSON_TOKENINFO), CSLIST_BOTTOM);
-          }
-          else if (!strcmp(szBoolBuffer, "null")) {
-
-            ti.type = JSON_TOK_NULL;
-            ti.szToken = 0;
-            CSLIST_Insert(This->Tokens, &ti,
-                          sizeof(CSJSON_TOKENINFO), CSLIST_BOTTOM);
-          }
-          else {
-            goto CSJSON_PRIVATE_TOKENIZE_ERROR;
-          }
-        }
-        else {
-
-          // We can accept white spaces between tokens and ignore them,
-          // otherwise, the JSON is invalid.
-
-          if (!((szJsonString[n] == ' ')  ||
-                (szJsonString[n] == '\t') ||
-                (szJsonString[n] == '\r') ||
-                (szJsonString[n] == '\n')))
-          {
-            goto CSJSON_PRIVATE_TOKENIZE_ERROR;
-          }
-        }
-      }
-
-      break;
-    }
-
-    n++;
-  }
-
-  This->nextSlabSize = n > 0 ? n : 1;
-  if (This->nextSlabSize > This->slabSize) {
-    This->slabSize = This->nextSlabSize;
-    free(This->szSlab);
-    This->szSlab = (char*)malloc((This->nextSlabSize + 1) * sizeof(char));
-  }
-
-  return CS_SUCCESS;
-
-  CSJSON_PRIVATE_TOKENIZE_ERROR:
-
-  This->nextSlabSize = n > 0 ? n : 1;
-  if (This->nextSlabSize > This->slabSize) {
-    This->slabSize = This->nextSlabSize;
-    free(This->szSlab);
-    This->szSlab = (char*)malloc((This->nextSlabSize + 1) * sizeof(char));
-  }
-   
-  return CS_FAILURE;
-}
-
-CSRESULT
   CSJSON_Parse
     (CSJSON *This,
      char *pJsonString,
@@ -1472,14 +942,7 @@ CSRESULT
 
   // Let's see if this is a valid JSON string
 
-  if (parseMode == JSON_UNICODE_NOCONVERT) {
-    Rc = CSJSON_PRIVATE_Tokenize_UNICODE_NOCONVERT(This, pJsonString);
-  }
-  else {
-    Rc = CSJSON_PRIVATE_Tokenize_UNICODE_CONVERT(This, pJsonString);
-  }
-
-  if (CS_SUCCEED(Rc))
+  if (CS_SUCCEED(CSJSON_PRIVATE_Tokenize(This, pJsonString)))
   {
       // Get first token to determine JSON type
     if (CS_SUCCEED(CSLIST_GetDataRef(This->Tokens, (void**)(&pti), 0))) {
@@ -2282,6 +1745,11 @@ CSRESULT
   CSJSON_DIRENTRY* lpdire;
 
   if (szPath == 0 || pdire == 0) {
+
+    pdire->Listing = 0;
+    pdire->numItems = 0;
+    pdire->type = JSON_TYPE_UNKNOWN;
+
     return CS_FAILURE;
   }
 
@@ -2324,6 +1792,11 @@ CSRESULT
   }
 
   free(tempPath);
+
+  pdire->Listing = 0;
+  pdire->numItems = 0;
+  pdire->type = JSON_TYPE_UNKNOWN;
+
   return CS_FAILURE;
 }
 
@@ -2343,6 +1816,13 @@ CSRESULT CSJSON_LookupKey
   CSJSON_DIRENTRY* lpdire;
 
   if (szPath == 0 || szKey == 0 || plse == 0) {
+
+    plse->keySize = 0;
+    plse->szKey = 0;
+    plse->szValue = 0;
+    plse->type = JSON_TYPE_UNKNOWN;
+    plse->valueSize = 0;
+
     return CS_FAILURE;
   }
 
@@ -2399,12 +1879,13 @@ CSRESULT CSJSON_LookupKey
     }
   }
 
+  free(tempPath);
+
   plse->keySize = 0;
   plse->szKey = 0;
   plse->szValue = 0;
+  plse->type = JSON_TYPE_UNKNOWN;
   plse->valueSize = 0;
-
-  free(tempPath);
 
   return CS_FAILURE;
 }
@@ -2426,6 +1907,13 @@ CSRESULT
   CSJSON_DIRENTRY* lpdire;
 
   if (szPath == 0 || plse == 0) {
+
+    plse->keySize = 0;
+    plse->szKey = 0;
+    plse->szValue = 0;
+    plse->type = JSON_TYPE_UNKNOWN;
+    plse->valueSize = 0;
+
     return CS_FAILURE;
   }
 
@@ -2484,6 +1972,7 @@ CSRESULT
   plse->keySize = 0;
   plse->szKey = 0;
   plse->szValue = 0;
+  plse->type = JSON_TYPE_UNKNOWN;
   plse->valueSize = 0;
 
   free(tempPath);
@@ -2890,7 +2379,6 @@ long
                     break;
 
                   case '\\':
-
                     if (pls->szValue[ti+1] == 'u') {
                       (*szOutStream)[*curPos] = pls->szValue[ti];
                       (*curPos)++;
@@ -3096,8 +2584,7 @@ long
                 break;
 
               case '\\':
-
-               if (pls->szKey[ti+1] == 'u') {
+                if (pls->szKey[ti+1] == 'u') {
                   (*szOutStream)[*curPos] = pls->szKey[ti];
                   (*curPos)++;
                 }
@@ -3175,8 +2662,7 @@ long
                   (*curPos)++;
                   break;
                 case '\\':
-
-                 if (pls->szValue[ti+1] == 'u') {
+                  if (pls->szValue[ti+1] == 'u') {
                     (*szOutStream)[*curPos] = pls->szValue[ti];
                     (*curPos)++;
                   }
@@ -4153,9 +3639,6 @@ CSRESULT
         lse.type = type;
         lse.valueSize = 0;
         lse.szValue = 0;
-
-//        CSMAP_Insert(ppdire->Listing, szKey,
-//                       (void*)(&lse), sizeof(CSJSON_LSENTRY));
 
         CSMAP_Insert(ppdire->Listing, lse.szKey,
                        (void*)(&lse), sizeof(CSJSON_LSENTRY));
