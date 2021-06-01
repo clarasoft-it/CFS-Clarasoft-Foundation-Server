@@ -527,7 +527,7 @@ CSRESULT
           memcpy(ti.szToken, &(szJsonString[startToken]), tempIndex);
         }
 
-        ti.szToken[ti.size] = 0;
+        ti.szToken[ti.size-1] = 0;
 
         // We must clean up escape characters (\)
         // note that the token size includes the NULL.
@@ -3533,7 +3533,7 @@ CSRESULT
         szNewPath = (char*)malloc(totalSize * sizeof(char));
         memcpy(szNewPath, tempPath, len);
 
-        if (szPath[1] == 0) { 
+        if (tempPath[1] == 0) { 
           // we are root
           memcpy(&szNewPath[1], szIndex, indexLen);
           szNewPath[len + indexLen] = 0;
@@ -3602,7 +3602,7 @@ CSRESULT
 
         memcpy(szNewPath, tempPath, len);
 
-        if (szPath[1] == 0) {
+        if (tempPath[1] == 0) {
           // we are root
           if (keySize == 0) {
             szNewPath[len] = JSON_PATH_SEP;
@@ -3615,22 +3615,9 @@ CSRESULT
           }
         }
         else {
-          if (type == JSON_TYPE_OBJECT) {
-            szNewPath[len] = JSON_PATH_SEP;
-            memcpy(&szNewPath[len+1], szKey, keySize);
-            szNewPath[len+1+keySize] = 0;
-          }
-          else {
-            if (tempPath[len-1] == JSON_PATH_SEP) { 
-              memcpy(&szNewPath[len], szKey, keySize);
-              szNewPath[len + keySize] = 0;
-            }
-            else {
-              szNewPath[len] = JSON_PATH_SEP;
-              memcpy(&szNewPath[len+1], szKey, keySize);
-              szNewPath[len + 1 + keySize] = 0;
-            }
-          }
+          szNewPath[len] = JSON_PATH_SEP;
+          memcpy(&szNewPath[len+1], szKey, keySize);
+          szNewPath[len + 1 + keySize] = 0;
         }
 
         lse.szKey = (char*)malloc((keySize+1) * sizeof(char));
