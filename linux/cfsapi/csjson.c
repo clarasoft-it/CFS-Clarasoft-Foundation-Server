@@ -568,7 +568,7 @@ CSRESULT
                   ti.szToken[tok_j] = '\t';
                   break;
                 default:
-                  // Should never get here... let's skip it
+                  ti.szToken[tok_j] = ti.szToken[tok_i];
                   break;
               }
             }
@@ -632,14 +632,24 @@ CSRESULT
 
                 case '.':
 
-                  // Only one dot and it must precede the exponent character
+                  // Only one dot and it must precede the exponent character and
+                  // follow a digit
 
                   if (!haveDot && !haveExp) {
 
-                    // check that if first digit is zero, then there are no
-                    // other digits between the zero and the dot
-
                     if (szJsonString[startToken] == '-') {
+
+                      // There must be at least one digit in between the 
+                      // minus sign and the dot... if dot is at index 1,
+                      // then it's an error.
+
+                      if (tempIndex == 1) {
+                        goto CSJSON_PRIVATE_TOKENIZE_ERROR;
+                      }
+
+                      // check that if first digit is zero, then there are no
+                      // other digits between the zero and the dot
+
                       if (szJsonString[startToken+1] == '0') {
                         if (tempIndex == 2) {
                           // Ok, number starts with
@@ -671,7 +681,7 @@ CSRESULT
 
                       }
                       else {
-                        // Ok, number starts with - and some non-zero digit
+                        // Ok, number starts some non-zero digit
                         tempIndex++;
                         n++;
                       }
@@ -751,6 +761,43 @@ CSRESULT
               }
 
               break;
+          }
+        }
+
+        //////////////////////////////////////////////////////////////
+        // Check following cases:
+        // 
+        // last digit is e, E +, - or dot
+        // zero not immediately followed by a dot
+        //////////////////////////////////////////////////////////////
+
+        if (szJsonString[startToken + tempIndex-1] == 'e' ||
+            szJsonString[startToken + tempIndex-1] == 'E' ||
+            szJsonString[startToken + tempIndex-1] == '+' ||
+            szJsonString[startToken + tempIndex-1] == '-' ||
+            szJsonString[startToken + tempIndex-1] == '.') {
+          goto CSJSON_PRIVATE_TOKENIZE_ERROR;
+        }
+
+        if (szJsonString[startToken] == '0') {
+          if (tempIndex > 1) {
+            if (szJsonString[startToken+1] != '.' &&
+                szJsonString[startToken+1] != 'e' &&
+                szJsonString[startToken+1] != 'E') {
+              goto CSJSON_PRIVATE_TOKENIZE_ERROR;
+            }
+          }
+        }
+
+        if (szJsonString[startToken] == '-') {
+          if (szJsonString[startToken+1] == '0') {
+            if (tempIndex > 2) {
+              if (szJsonString[startToken+2] != '.' &&
+                  szJsonString[startToken+2] != 'e' &&
+                  szJsonString[startToken+2] != 'E') {
+                goto CSJSON_PRIVATE_TOKENIZE_ERROR;
+              }
+            }
           }
         }
 
@@ -1064,11 +1111,10 @@ CSRESULT
   CSJSON_DIRENTRY dire;
 
   long vv;
-
   char* szNewPath;
 
   vv = 0;
- 
+
   // Since this is an object, the directory listing will be a map
   Listing = CSMAP_Constructor();
 
@@ -1077,55 +1123,72 @@ CSRESULT
 
   while (CS_SUCCEED(Rc = CSJSON_PRIVATE_VV(This, index,
                                           szNewPath, len, Listing))) {
-
-    vv++;
+ 
+    // We check for an empty object; in this case, the VV function
+    // will fetch the matching right brace for this object rather
+    // than the code that follows the call to VV. 
 
     if (CS_DIAG(Rc) == JSON_TOK_RBRACE) {
+      // maybe this is an empty object
+      if (vv == 0) {
+        // This is the end of the object and there was no variable/value
+        dire.type = JSON_TYPE_OBJECT;
+        dire.Listing = Listing;
+        dire.numItems  = vv;
 
-      dire.type = JSON_TYPE_OBJECT;
-      dire.Listing = Listing;
-      dire.numItems  = vv;
+        CSMAP_Insert(This->Object, szNewPath,
+                   (void*)(&dire), sizeof(CSJSON_DIRENTRY));
 
-      CSMAP_Insert(This->Object, szNewPath,
-                  (void*)(&dire), sizeof(CSJSON_DIRENTRY));
-
-      This->nextSlabSize += 2; // because we need 2 braces
-      free(szNewPath);
-      return CS_SUCCESS;
-    }
-    else { 
-
-      Rc = CSLIST_GetDataRef(This->Tokens, (void**)(&pti), *index);
-
-      if (CS_FAIL(Rc)) {
+        This->nextSlabSize += 2; // because we need 2 braces
         free(szNewPath);
-        return Rc;
+        return CS_SUCCESS;
       }
       else {
-        if (pti->type == JSON_TOK_COMMA) {
-          (*index)++;
-          (This->nextSlabSize)++;  // for the comma
-        }
-        else {
-
-          if (pti->type == JSON_TOK_RBRACE) {
-
-            dire.type = JSON_TYPE_OBJECT;
-            dire.Listing = Listing;
-            dire.numItems  = vv;
-
-            CSMAP_Insert(This->Object, szNewPath,
-                        (void*)(&dire), sizeof(CSJSON_DIRENTRY));
-
-            This->nextSlabSize += 2; // because we need 2 braces
-            (*index)++;
-            free(szNewPath);
-            return CS_SUCCESS;   
-          }
-        }
+        Rc = CS_FAILURE;
+        goto CSJSON_PRIVATE_O_FAILURE;
       }
     }
+
+    // Read next toke; we should have either a comma or a right brace
+    Rc = CSLIST_GetDataRef(This->Tokens, (void**)(&pti), *index);
+
+    if (CS_FAIL(Rc)) {
+      goto CSJSON_PRIVATE_O_FAILURE;
+    }
+
+    switch(pti->type) {
+   
+      case JSON_TOK_COMMA:
+    
+        vv++;
+        (*index)++;
+        (This->nextSlabSize)++;  // for the comma
+        break;
+
+      case JSON_TOK_RBRACE:
+
+        vv++;
+        (*index)++;
+        // This is the end of the object
+        dire.type = JSON_TYPE_OBJECT;
+        dire.Listing = Listing;
+        dire.numItems  = vv;
+
+        CSMAP_Insert(This->Object, szNewPath,
+                   (void*)(&dire), sizeof(CSJSON_DIRENTRY));
+
+        This->nextSlabSize += 2; // because we need 2 braces
+        free(szNewPath);
+        return CS_SUCCESS;
+
+      default:
+
+        // Wrong token type
+        goto CSJSON_PRIVATE_O_FAILURE;
+    }
   }
+
+  CSJSON_PRIVATE_O_FAILURE:
 
   free(szNewPath);
   return Rc;
@@ -1595,10 +1658,16 @@ CSRESULT
 
         case JSON_TOK_COMMA:
 
-          commaFlag = 1;
-          start++;
-          // because we need room for the comma
-          (This->nextSlabSize)++;
+          if (commaFlag == 0) {
+            commaFlag = 1;
+            start++;
+            // because we need room for the comma
+            (This->nextSlabSize)++;
+          }
+          else {
+            goto CSJSON_PRIVATE_A_CLEANUP;
+          }
+
           break;
 
         case JSON_TOK_RBRACKET:
@@ -3893,4 +3962,3 @@ CSRESULT CSJSON_PRIVATE_IsNumeric(char* szNumber) {
 
   return Rc;
 }
-
