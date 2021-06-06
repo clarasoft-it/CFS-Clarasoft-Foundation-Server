@@ -2498,8 +2498,6 @@ long
 
   char* tempPath;
 
-  //char szCanonicalPath[2];
-
   if (szPath == 0 || szOutStream == 0) {
     return CS_FAILURE;
   }
@@ -2547,9 +2545,6 @@ long
   }
   tempPath[i] = 0;
 
-  //szCanonicalPath[0] = JSON_PATH_SEP;
-  //szCanonicalPath[1] = 0;
-  //CSJSON_PRIVATE_Serialize(This, szCanonicalPath, szOutStream, &curPos);
   CSJSON_PRIVATE_Serialize(This, tempPath, szOutStream, &curPos);
   free(tempPath);
   (*szOutStream)[curPos] = 0;
@@ -3002,42 +2997,43 @@ long
                    (char*)malloc((pathLen + pls->keySize + 3) * sizeof(char));
 
                 if (pathLen > 1) { // we are not root path
-                  if (pls->keySize > 1) {
-                    if(szPath[pathLen-1] == JSON_PATH_SEP) {
-                      memcpy(szSubPath, szPath, pathLen);
-                      memcpy(&szSubPath[pathLen], pls->szKey, pls->keySize);
-                      szSubPath[pathLen + pls->keySize] = 0;
-                    }
-                    else {
-                      memcpy(szSubPath, szPath, pathLen);
-                      szSubPath[pathLen] = JSON_PATH_SEP;
-                      memcpy(&szSubPath[pathLen+1], pls->szKey, pls->keySize);
-                      szSubPath[pathLen + 1 + pls->keySize] = 0;
-                    }
+                  if (pls->keySize == 1) { // Key is empty
+                    szSubPath =
+                      (char*)malloc((pathLen + 2) * sizeof(char));
+                    memcpy(szSubPath, szPath, pathLen);
+                    szSubPath[pathLen] = JSON_PATH_SEP;
+                    szSubPath[pathLen+1] = 0;
                   }
                   else {
                     if(szPath[pathLen-1] == JSON_PATH_SEP) {
+                      szSubPath =
+                        (char*)malloc((pathLen + pls->keySize) * sizeof(char));
                       memcpy(szSubPath, szPath, pathLen);
-                      szSubPath[pathLen + pls->keySize] = 0;
+                      memcpy(&szSubPath[pathLen], pls->szKey, pls->keySize);
                     }
                     else {
+                      szSubPath =
+                        (char*)malloc((pathLen + pls->keySize + 1) * sizeof(char));
                       memcpy(szSubPath, szPath, pathLen);
                       szSubPath[pathLen] = JSON_PATH_SEP;
-                      szSubPath[pathLen+1] = 0;
+                      memcpy(&szSubPath[pathLen+1], pls->szKey, pls->keySize);
                     }
                   }
                 }
                 else {
-                  // We are root
-                  if (pls->keySize > 1) {
-                    memcpy(szSubPath, szPath, pathLen);
-                    memcpy(&szSubPath[pathLen], pls->szKey, pls->keySize);
-                    szSubPath[pathLen + pls->keySize] = 0;
-                  }
-                  else {
+                  // we are at root
+                  if (pls->keySize == 1) { // Key is empty
+                    szSubPath =
+                      (char*)malloc(3 * sizeof(char));
                     szSubPath[0] = JSON_PATH_SEP;
                     szSubPath[1] = JSON_PATH_SEP;
                     szSubPath[2] = 0;
+                  }
+                  else {
+                    szSubPath =
+                      (char*)malloc((pls->keySize + 1) * sizeof(char));
+                    szSubPath[0] = JSON_PATH_SEP;
+                    memcpy(&szSubPath[1], pls->szKey, pls->keySize);
                   }
                 }
 
@@ -3052,46 +3048,45 @@ long
               case JSON_TYPE_OBJECT:
 
                 pathLen = strlen(szPath);
-                szSubPath =
-                   (char*)malloc((pathLen + pls->keySize + 3) * sizeof(char));
 
                 if (pathLen > 1) { // we are not root path
-                  if (pls->keySize > 1) {
-                    if(szPath[pathLen-1] == JSON_PATH_SEP) {
-                      memcpy(szSubPath, szPath, pathLen);
-                      memcpy(&szSubPath[pathLen], pls->szKey, pls->keySize);
-                      szSubPath[pathLen + pls->keySize] = 0;
-                    }
-                    else {
-                      memcpy(szSubPath, szPath, pathLen);
-                      szSubPath[pathLen] = JSON_PATH_SEP;
-                      memcpy(&szSubPath[pathLen+1], pls->szKey, pls->keySize);
-                      szSubPath[pathLen + 1 + pls->keySize] = 0;
-                    }
+                  if (pls->keySize == 1) { // Key is empty
+                    szSubPath =
+                      (char*)malloc((pathLen + 2) * sizeof(char));
+                    memcpy(szSubPath, szPath, pathLen);
+                    szSubPath[pathLen] = JSON_PATH_SEP;
+                    szSubPath[pathLen+1] = 0;
                   }
                   else {
                     if(szPath[pathLen-1] == JSON_PATH_SEP) {
+                      szSubPath =
+                        (char*)malloc((pathLen + pls->keySize) * sizeof(char));
                       memcpy(szSubPath, szPath, pathLen);
-                      szSubPath[pathLen + pls->keySize] = 0;
+                      memcpy(&szSubPath[pathLen], pls->szKey, pls->keySize);
                     }
                     else {
+                      szSubPath =
+                        (char*)malloc((pathLen + pls->keySize + 1) * sizeof(char));
                       memcpy(szSubPath, szPath, pathLen);
                       szSubPath[pathLen] = JSON_PATH_SEP;
-                      szSubPath[pathLen+1] = 0;
+                      memcpy(&szSubPath[pathLen+1], pls->szKey, pls->keySize);
                     }
                   }
                 }
                 else {
-                  // We are root
-                  if (pls->keySize > 1) {
-                    memcpy(szSubPath, szPath, pathLen);
-                    memcpy(&szSubPath[pathLen], pls->szKey, pls->keySize);
-                    szSubPath[pathLen + pls->keySize] = 0;
-                  }
-                  else {
+                  // we are at root
+                  if (pls->keySize == 1) { // Key is empty
+                    szSubPath =
+                      (char*)malloc(3 * sizeof(char));
                     szSubPath[0] = JSON_PATH_SEP;
                     szSubPath[1] = JSON_PATH_SEP;
                     szSubPath[2] = 0;
+                  }
+                  else {
+                    szSubPath =
+                      (char*)malloc((pls->keySize + 1) * sizeof(char));
+                    szSubPath[0] = JSON_PATH_SEP;
+                    memcpy(&szSubPath[1], pls->szKey, pls->keySize);
                   }
                 }
 
@@ -3961,32 +3956,42 @@ CSRESULT
         }
 
         keySize = strlen(szKey);
-        totalSize = len + keySize + 2;
-        szNewPath = (char*)malloc(totalSize * sizeof(char));
 
-        memcpy(szNewPath, tempPath, len);
-
-        if (tempPath[1] == 0) {
-          // we are at root
-          if (keySize == 0) {
+        if (len > 1) {  // we are not at root path
+          if (keySize == 0) { // Key is empty
+            szNewPath = (char*)malloc((len + 2) * sizeof(char));
+            memcpy(szNewPath, tempPath, len);
             szNewPath[len] = JSON_PATH_SEP;
-            memcpy(&szNewPath[len+1], szKey, keySize);
-            szNewPath[len + 1 + keySize] = 0;
+            szNewPath[len+1] = 0;
           }
           else {
-            memcpy(&szNewPath[len], szKey, keySize);
-            szNewPath[len + keySize] = 0;
+            if (tempPath[len-1] == JSON_PATH_SEP) {
+              szNewPath = (char*)malloc((len + keySize + 1) * sizeof(char));
+              memcpy(szNewPath, tempPath, len);
+              memcpy(&szNewPath[len], szKey, keySize);
+              szNewPath[len + keySize] = 0;
+            }
+            else {
+              szNewPath = (char*)malloc((len + keySize + 2) * sizeof(char));
+              memcpy(szNewPath, tempPath, len);
+              szNewPath[len] = JSON_PATH_SEP;
+              memcpy(&szNewPath[len+1], szKey, keySize);
+              szNewPath[len + keySize + 1] = 0;
+            }
           }
         }
         else {
-          if (tempPath[len-1] == JSON_PATH_SEP) {
-            memcpy(&szNewPath[len], szKey, keySize);
-            szNewPath[len + keySize] = 0;
+          if (keySize == 0) { // Key is empty
+            szNewPath = (char*)malloc(3 * sizeof(char));
+            szNewPath[0] = JSON_PATH_SEP;
+            szNewPath[1] = JSON_PATH_SEP;
+            szNewPath[2] = 0;
           }
           else {
-            szNewPath[len] = JSON_PATH_SEP;
-            memcpy(&szNewPath[len+1], szKey, keySize);
-            szNewPath[len + 1 + keySize] = 0;
+            szNewPath = (char*)malloc((keySize + 2) * sizeof(char));
+            szNewPath[0] = JSON_PATH_SEP;
+            memcpy(&szNewPath[1], szKey, keySize);
+            szNewPath[keySize + 1] = 0;
           }
         }
 
