@@ -1,4 +1,3 @@
-
 /* ==========================================================================
 
   Clarasoft Foundation Server for Linux
@@ -7,7 +6,7 @@
 
   Command line arguments:
 
-   Configuration path from the CFS Repository
+    Configuration path from the CFS Repository
 
  
   Distributed under the MIT license
@@ -33,6 +32,10 @@
 
 ========================================================================== */
 
+#define _GNU_SOURCE 
+
+#include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -48,6 +51,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <syslog.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <clarasoft/cslib.h>
@@ -75,6 +79,12 @@ pid_t
      int conn_fd,
      int *NumHandlers);
 
+CSRESULT
+  CleanupLogs
+    (char* szPath,
+     char* szPattern,
+     int days);
+
 typedef struct tagHANDLERINFO
 {
 
@@ -88,14 +98,30 @@ typedef struct tagHANDLERINFO
   Globals
 -------------------------------------------------------------------------- */
 
+FILE* daemonlog;
+
+time_t now;
+
+struct tm ts;
+
 CSLIST handlers;
+
+CSMAP extraHandlers;
 
 int listen_fd;
 int g_NumHandlers;
-int szDaemonNameLength;
+int iDaemonNameLength;
+int iPeerNameSize;
+int days;
 
 char* szDaemonName;
 char* szProtocolHandler;
+
+char szPeerName[256];
+char timestamp[80];
+char szLogDir[1024];
+char szLogName[256];
+char szLogFile[1281];
 
 /////////////////////////////////////////////////////////////////////////////
 // A descriptor set for the listener (a single instance) and
@@ -121,12 +147,15 @@ int main(int argc, char **argv)
   int rc;
   int fd;
   int backlog;
+  int len;
 
   pid_t pid;
 
   char dummyData;
+
   char szPort[11];
   char szConfig[99];
+  char szHandlerConfig[99];
 
   socklen_t socklen;
 
@@ -141,18 +170,25 @@ int main(int argc, char **argv)
   CFSRPS_CONFIGINFO cfgi;
   CFSRPS_PARAMINFO cfgpi;
 
+  HANDLERINFO* phi;
+ 
+  openlog(basename(argv[0]), LOG_PID, LOG_LOCAL3);
+
   ////////////////////////////////////////////////////////////////////////////
   // Minimally check program arguments
   ////////////////////////////////////////////////////////////////////////////
 
   if (argc < 2)
   {
-    printf("\nmissing argument");
+    syslog(LOG_ERR, "missing argument");
+    closelog();
     exit(1);
   }
 
+  strncpy(szConfig, argv[1], 99);
+
   ////////////////////////////////////////////////////////////////////////////
-  // The list of handler information structures must be initialized first
+  // The list of handler informaton structures must be initialized first
   // because the cleanup handler will use it.
   ////////////////////////////////////////////////////////////////////////////
 
@@ -164,10 +200,10 @@ int main(int argc, char **argv)
   // under different names.
   ////////////////////////////////////////////////////////////////////////////
 
-  szDaemonNameLength = strlen(argv[0]);
-  szDaemonName = (char *)malloc(szDaemonNameLength * sizeof(char) + 1);
-  memcpy(szDaemonName, argv[0], szDaemonNameLength);
-  szDaemonName[szDaemonNameLength] = 0;
+  iDaemonNameLength = strlen(argv[0]);
+  szDaemonName = (char *)malloc(iDaemonNameLength * sizeof(char) + 1);
+  memcpy(szDaemonName, argv[0], iDaemonNameLength);
+  szDaemonName[iDaemonNameLength] = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   // We must now turn this process into a daemon
@@ -175,10 +211,20 @@ int main(int argc, char **argv)
 
   // Let's duplicate and detach from the calling process
 
+  if (argc >= 3) {
+   
+    if (argv[2][0] == 'd') {
+      syslog (LOG_INFO, "Running in DEBUG mode");
+      goto START_DAEMON_DEBUGMODE;
+    }
+  }
+
   pid = fork();
 
   if (pid < 0)
   {
+    syslog(LOG_ERR, "fork failure : %m");
+    closelog();
     return 1;
   }
   else
@@ -194,6 +240,8 @@ int main(int argc, char **argv)
 
   if (setsid() < 0)
   {
+    syslog(LOG_ERR, "setsid failure : %m");
+    closelog();
     return 2;
   }
 
@@ -217,9 +265,23 @@ int main(int argc, char **argv)
     }
   }
 
-  // change current directory
+  // change current directory: same as daemon image
 
-  chdir("/");
+  len = strlen(argv[0]);
+  while (len > 0) {
+    if (argv[0][len] == '/') {
+      argv[0][len] = 0;
+      break;
+    }
+    len--;
+  }
+
+  if (len == 0) {
+    chdir("/");
+  }
+  else {
+    chdir(argv[0]);
+  }
 
   // close all file descriptors (should only be the first 3)
 
@@ -248,6 +310,10 @@ int main(int argc, char **argv)
       close(fd);
   }
 
+  ////////////////////////////////////////////////////////////////////////////
+  // branching label
+  START_DAEMON_DEBUGMODE:
+
   // reset umask to prevent insecure file privileges
   // (this daemon could run as root)
 
@@ -275,36 +341,130 @@ int main(int argc, char **argv)
   //////////////////////////////////////////////////////////////////
   // Retrieve daemon configuration
   //////////////////////////////////////////////////////////////////
- 
+
   repo = CFSRPS_Constructor();
 
   strcpy(cfgi.szPath, argv[1]);
 
   if (CS_FAIL(CFSRPS_LoadConfig(repo, &cfgi)))
   {
+    syslog(LOG_ERR, "can't open configuration : %s", cfgi.szPath);
+    closelog();
     exit(1);
   }
 
-  strcpy(szConfig, argv[1]);
+  if (CS_FAIL(CFSRPS_LookupParam(repo, "LOGDIR", &cfgpi)))
+  {
+     strcpy(szLogDir, "/var/log");
+  }
+  else {
+     strcpy(szLogDir, cfgpi.szValue);
+  }
+
+  if (CS_FAIL(CFSRPS_LookupParam(repo, "LOGFILE_RETAIN", &cfgpi)))
+  {
+     days = atoi(cfgpi.szValue);
+  }
+  else {
+     days = 7;
+  }
+
+  // Create log file
+  // use configuration path to name the log file; for this, we 
+  // clean up the configuration path
+
+  i = 0;
+  while (argv[1][i] != 0) {
+    if (!isalpha(argv[1][i]) && argv[1][i] != '_') {
+      szLogName[i] = '-';
+    }
+    else {
+      szLogName[i] = argv[1][i];
+    }
+    i++;
+  }
+
+  CleanupLogs(szLogDir, szLogName, days);
+
+  time(&now);
+  ts = *localtime(&now);
+  strftime(timestamp, sizeof(timestamp), "%Y-%m-%d-%H-%M-%S", &ts);
+
+  sprintf(szLogFile, 
+          "%s/%s-%s-log.txt",
+          szLogDir, szLogName, timestamp);    
+
+  daemonlog = fopen(szLogFile, "w+");
+
+  if (!daemonlog) {
+    syslog(LOG_ERR, "can't open log file : %s", szLogFile);
+    closelog();
+    exit(2);
+  }
+
+  // No longer need syslog, we switch to daemon log file
+  syslog(LOG_INFO, "running with configuration %s", cfgi.szPath);
+  closelog( );
 
   if (CS_FAIL(CFSRPS_LookupParam(repo, "PORT", &cfgpi)))
   {
-    exit(2);
+    time(&now);
+    ts = *localtime(&now);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+    fprintf(daemonlog, "%s - CONF-ERR   PORT parameter not found()\n",
+            timestamp);
+    fflush(daemonlog);
+
+    exit(3);
   }
 
   strcpy(szPort, cfgpi.szValue);
 
   if (CS_FAIL(CFSRPS_LookupParam(repo, "HANDLER", &cfgpi)))
   {
-    exit(3);
+    time(&now);
+    ts = *localtime(&now);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+    fprintf(daemonlog, "%s - CONF-ERR   HANDLER parameter not found\n",
+            timestamp);
+    fflush(daemonlog);
+
+    exit(4);
+  }
+
+  if (CS_FAIL(CFSRPS_LookupParam(repo, "HANDLER_CONFIG", &cfgpi)))
+  {
+    strncpy(szHandlerConfig, argv[1], 99);
+
+    time(&now);
+    ts = *localtime(&now);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+    fprintf(daemonlog, "%s - CONF-WARN  HANDLER_CONFIG parameter not found - using daemon configuration\n",
+            timestamp);
+    fflush(daemonlog);
+  }
+  else {
+    strncpy(szHandlerConfig, cfgpi.szValue, 99);
   }
 
   szProtocolHandler =
       (char *)malloc(sizeof(char) * strlen(cfgpi.szValue) + 1);
+
   strcpy(szProtocolHandler, cfgpi.szValue);
 
   if (CS_FAIL(CFSRPS_LookupParam(repo, "LISTEN_BACKLOG", &cfgpi)))
   {
+    time(&now);
+    ts = *localtime(&now);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+    fprintf(daemonlog, "%s - CONF-WARN  LISTEN_BACKLOG parameter not found - using default value of 1024\n",
+            timestamp);
+    fflush(daemonlog);
+
     backlog = 1024;
   }
   else
@@ -312,8 +472,17 @@ int main(int argc, char **argv)
     backlog = atoi(cfgpi.szValue);
   }
 
-  if (CS_FAIL(CFSRPS_LookupParam(repo, "RES_NUM_HANDLERS", &cfgpi)))
+  //if (CS_FAIL(CFSRPS_LookupParam(repo, "RES_NUM_HANDLERS", &cfgpi)))
+  if (CFSRPS_LookupParam(repo, "RES_NUM_HANDLERS", &cfgpi) == CS_FAILURE)
   {
+    time(&now);
+    ts = *localtime(&now);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+    fprintf(daemonlog, "%s - CONF-WARN  RES_NUM_HANDLERS parameter not found - using default value of 0\n",
+            timestamp);
+    fflush(daemonlog);
+
     initialNumHandlers = 0; // this means all handlers will be transcient
   }
   else
@@ -323,18 +492,37 @@ int main(int argc, char **argv)
 
   if (CS_FAIL(CFSRPS_LookupParam(repo, "TRS_NUM_HANDLERS", &cfgpi)))
   {
-    maxNumHandlers = initialNumHandlers;
+    time(&now);
+    ts = *localtime(&now);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+    fprintf(daemonlog, "%s - CONF-WARN  TRS_NUM_HANDLERS parameter not found - using default value\n",
+            timestamp);
+    fflush(daemonlog);
+
+    maxNumHandlers = initialNumHandlers == 0 ? 1 : initialNumHandlers;
   }
   else
   {
     maxNumHandlers = initialNumHandlers + atoi(cfgpi.szValue);
   }
 
+  time(&now);
+  ts = *localtime(&now);
+  strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+  fprintf(daemonlog, "%s - DAEMON-STR Starting daemon - %s "
+                     "config: %s "
+                     "port: %s "
+                     "handler: %s\n", 
+                     timestamp, szDaemonName, argv[1], szPort, szProtocolHandler);
+  fflush(daemonlog);
+
   CFSRPS_Destructor(&repo);
 
-
+  // allocate one more slote because number of handlers could be zero
   handlerFdSet = (struct pollfd *)
-      malloc((initialNumHandlers) * sizeof(struct pollfd));
+      malloc((initialNumHandlers + 1) * sizeof(struct pollfd));
 
   memset(handlerFdSet, 0, (initialNumHandlers) * sizeof(struct pollfd));
 
@@ -372,21 +560,7 @@ int main(int argc, char **argv)
 
   for (i = 0; i < initialNumHandlers; i++)
   {
-    spawnHandler(szProtocolHandler, szConfig, handlers, &g_NumHandlers);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  // add child stream pipe descriptors to socket container.
-  // We also initialise how many handlers are inserted inside the
-  // socket wait container. Note that we initialise this here
-  // since it is possible that some handlers may not
-  // have spawned (although very unlikely)
-  ///////////////////////////////////////////////////////////////////////////
-
-  if (g_NumHandlers < 1)
-  {
-    // We could not spawn handlers; our server is useless
-    exit(4);
+    spawnHandler(szProtocolHandler, szHandlerConfig, handlers, &g_NumHandlers);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -423,10 +597,56 @@ int main(int argc, char **argv)
         {
           // At this point, we know there is a connection pending
           // so we must restart accept() again
-           goto RESTART_ACCEPT; // accept was interrupted by a signal
+
+          time(&now);
+          ts = *localtime(&now);
+          strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+          fprintf(daemonlog, "%s - ACCP-INT   interrupted on accept()\n",
+                  timestamp);
+          fflush(daemonlog);
+
+          goto RESTART_ACCEPT; // accept was interrupted by a signal
+        }
+        else {
+
+          time(&now);
+          ts = *localtime(&now);
+          strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+          fprintf(daemonlog, "%s - ACCP-ERR   errno: %10d accept() returned an error\n",
+                  timestamp, errno);
+          fflush(daemonlog);
         }
       }
       else {
+
+        ///////////////////////////////////////////////////////////////
+        // Log information on the peer
+        ///////////////////////////////////////////////////////////////
+
+        time(&now);
+        ts = *localtime(&now);
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+        sprintf(szPeerName,"IPV6 %02x%02x:%02x%02x:%02x%02x:%02x%02x:"
+                           "%02x%02x:%02x%02x:%02x%02x:%02x%02x - " 
+                           "IPV4 %03d:%03d:%03d:%03d",
+               (int)client.sin6_addr.s6_addr[0],  (int)client.sin6_addr.s6_addr[1],
+               (int)client.sin6_addr.s6_addr[2],  (int)client.sin6_addr.s6_addr[3],
+               (int)client.sin6_addr.s6_addr[4],  (int)client.sin6_addr.s6_addr[5],
+               (int)client.sin6_addr.s6_addr[6],  (int)client.sin6_addr.s6_addr[7],
+               (int)client.sin6_addr.s6_addr[8],  (int)client.sin6_addr.s6_addr[9],
+               (int)client.sin6_addr.s6_addr[10], (int)client.sin6_addr.s6_addr[11],
+               (int)client.sin6_addr.s6_addr[12], (int)client.sin6_addr.s6_addr[13],
+               (int)client.sin6_addr.s6_addr[14], (int)client.sin6_addr.s6_addr[15],
+               (int)client.sin6_addr.s6_addr[12], (int)client.sin6_addr.s6_addr[13],
+               (int)client.sin6_addr.s6_addr[14], (int)client.sin6_addr.s6_addr[15]); 
+
+        fprintf(daemonlog, "%s - CONN       HOST: %s Connection received\n", 
+                timestamp, szPeerName);
+
+        fflush(daemonlog);
 
         //////////////////////////////////////////////////////////////////
         // Find an available handler; we first wait on handler descriptors
@@ -476,6 +696,18 @@ int main(int argc, char **argv)
 
                 if (CS_SUCCEED(hResult))
                 {
+
+                  CSLIST_GetDataRef(handlers, (void**)&phi, i);
+
+                  time(&now);
+                  ts = *localtime(&now);
+                  strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+                  fprintf(daemonlog, "%s - CONN-HND   MODE: RES  PID: %10d         Resident handler starting\n", 
+                          timestamp, phi->pid);
+
+                  fflush(daemonlog);
+
                   ////////////////////////////////////////////////
                   // IMPORTANT... we must break out of the loop
                   // because another handler may be sending its
@@ -486,12 +718,33 @@ int main(int argc, char **argv)
                   ////////////////////////////////////////////////
                    break;
                 }
+                else {
+
+                  CSLIST_GetDataRef(handlers, (void**)&phi, i);
+
+                  time(&now);
+                  ts = *localtime(&now);
+                  strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+                  fprintf(daemonlog, "%s - CONN-ERR   errno: %10d       Failed to send socket descriptor to handler\n", 
+                          timestamp, errno);
+
+                  fflush(daemonlog);
+                }
               }
               else
               {
                 if (rc < 0) {
                   if (errno == EINTR)
                   {
+                    time(&now);
+                    ts = *localtime(&now);
+                    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+                    fprintf(daemonlog, "%s - HND-RECV-H recv() interrupted while reading handler stream pipe\n",
+                            timestamp);
+                    fflush(daemonlog);
+
                     goto RESTART_RECV; // call recv() again
                   }
                 }
@@ -500,7 +753,13 @@ int main(int argc, char **argv)
                   ///////////////////////////////////////////////////
                   // handler closed connection
                   ///////////////////////////////////////////////////
+                  time(&now);
+                  ts = *localtime(&now);
+                  strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
 
+                  fprintf(daemonlog, "%s - HND-DISC-H handler closed connection on stream pipe\n",
+                          timestamp);
+                  fflush(daemonlog);
                 }
               }
             }
@@ -522,13 +781,30 @@ int main(int argc, char **argv)
               ///////////////////////////////////////////////////////////////
 
               spawnExtraHandler(szProtocolHandler,
-                            szConfig, conn_fd, &g_NumHandlers);
+                                szConfig, conn_fd, &g_NumHandlers);
+            }
+            else {
+
+              time(&now);
+              ts = *localtime(&now);
+              strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+              fprintf(daemonlog, "%s - EXEC-FAIL  Could not spawn extra handler: maximum limit reached\n",
+                          timestamp);
+              fflush(daemonlog);
             }
           }
           else {
         
             if (errno == EINTR)
             {
+              time(&now);
+              ts = *localtime(&now);
+              strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+              fprintf(daemonlog, "%s - WAIT-INT-H poll() interrupted on handler wait\n",
+                          timestamp);
+              fflush(daemonlog);
               goto RESTART_WAIT; // call poll() again
             }
             else
@@ -536,6 +812,13 @@ int main(int argc, char **argv)
               ////////////////////////////////////////////////////////////
               // Some error occurred.
               ////////////////////////////////////////////////////////////
+
+              time(&now);
+              ts = *localtime(&now);
+              strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+              fprintf(daemonlog, "%s - WAIT-ERR-H errno: %10d        poll() returned an error waiting on available handler - \n",
+                       timestamp, errno);
+              fflush(daemonlog);
             }
           } 
         }
@@ -552,15 +835,34 @@ int main(int argc, char **argv)
           //////////////////////////////////////////////////////////////////
           // Some error occurred.
           //////////////////////////////////////////////////////////////////
+
+          time(&now);
+          ts = *localtime(&now);
+          strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+          fprintf(daemonlog, "%s - SYS-ERROR  errno: %10d         poll returned error\n",
+                     timestamp, errno);
+          fflush(daemonlog);
         }
         else {
-          //////////////////////////////////////////////////////////////////
-          // poll was interrupted by a signal
-          //////////////////////////////////////////////////////////////////
+
+          time(&now);
+          ts = *localtime(&now);
+          strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+          fprintf(daemonlog, "%s - WAIT-INT-P poll() interrupted\n",
+                          timestamp);
+          fflush(daemonlog);
         }
       }
       else {
 
+        time(&now);
+        ts = *localtime(&now);
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+        fprintf(daemonlog, "%s - POLL-WAIT  poll() timed-out\n",
+                   timestamp);
+        fflush(daemonlog);
       }
     }
   }
@@ -605,6 +907,14 @@ pid_t spawnHandler
     hi.state = 0;
     hi.stream = streamfd[0];
 
+    time(&now);
+    ts = *localtime(&now);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+    fprintf(daemonlog, "%s - RHND-STR   PID: %10d         Starting resident handler\n", 
+                timestamp, hi.pid);
+    fflush(daemonlog);
+
     handlerFdSet[*NumHandlers].fd = hi.stream;
     handlerFdSet[*NumHandlers].events = POLLIN;
 
@@ -642,7 +952,7 @@ pid_t spawnHandler
       prctl(PR_SET_PDEATHSIG, SIGKILL);
 
       if (execvp((const char *)szHandler, szArgs) < 0) {
-        exit(1);
+        exit(5);
       }
     }
     else
@@ -676,6 +986,15 @@ pid_t
 
   if (pid > 0)
   {
+
+    time(&now);
+    ts = *localtime(&now);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+    fprintf(daemonlog, "%s - CONN-HND   MODE: TRS  PID: %10d         Transcient handler starting\n", 
+            timestamp, pid);
+
+    fflush(daemonlog);
     (*NumHandlers)++;
     return pid;
   }
@@ -702,7 +1021,7 @@ pid_t
       prctl(PR_SET_PDEATHSIG, SIGKILL);
 
       if (execvp((const char *)szHandler, szArgs) < 0) {
-        exit(1);
+        exit(6);
       }
     }
     else
@@ -755,6 +1074,7 @@ void
 
           if (phi->pid == pid)
           {
+
             if (phi->stream > -1)
             {
               close(phi->stream);
@@ -773,6 +1093,14 @@ void
               // mark this stream pipe as invalid
               handlerFdSet[i].fd = -1;
               handlerFdSet[i].events = 0;
+
+              time(&now);
+              ts = *localtime(&now);
+              strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+              fprintf(daemonlog, "%s - HND-KILL   PID: %d         Handler terminated\n", 
+                                 timestamp, pid);
+              fflush(daemonlog);
             }
 
             break;
@@ -793,6 +1121,15 @@ void
       break;
 
     case SIGTERM:
+
+
+      time(&now);
+      ts = *localtime(&now);
+      strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &ts);
+
+      fprintf(daemonlog, "%s - DAEMON-END Daemon terminated by SIGTERM signal\n", 
+                          timestamp);
+      fflush(daemonlog);
 
       // terminate every child handler
 
@@ -826,3 +1163,61 @@ void
 
   return;
 }
+
+
+CSRESULT
+  CleanupLogs
+    (char* szPath,
+     char* szPattern,
+     int days) {
+
+  int seconds;
+  time_t now;
+  struct dirent *dir;
+  DIR* directory;
+  char szFullFileName[1024];
+  char* pPattern;
+  struct stat fileInfo;
+
+  directory = opendir(szPath);
+
+  seconds = 86400 * days;  
+
+  time(&now);
+
+  now -= seconds;
+
+  if (directory)
+  {
+    while ((dir = readdir(directory)) != NULL)
+    {
+      if(dir->d_type==DT_REG){
+        strcpy(szFullFileName, szPath);
+        strcat(szFullFileName, "/");
+        strcat(szFullFileName, dir->d_name);
+        
+        // get file info
+        if (stat(szFullFileName, &fileInfo) >= 0) {
+
+          if (szPattern) {
+
+            pPattern = strstr(dir->d_name, szPattern);
+
+            if (pPattern != NULL) {
+              if (pPattern == dir->d_name) {
+                if (fileInfo.st_ctime < now) {
+                  remove(szFullFileName);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return CS_SUCCESS;
+}
+
+
+
