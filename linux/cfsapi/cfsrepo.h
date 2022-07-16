@@ -42,15 +42,6 @@
 #define CFSRPS_PARAM_MAXBUFF          33
 #define CFSRPS_VALUE_MAXBUFF          129
 
-#define TLSCFG_LVL_ENVIRON            1
-#define TLSCFG_LVL_SESSION            2
-
-#define TLSCFG_PARAMTYPE_STRING       1
-#define TLSCFG_PARAMTYPE_NUMERIC      2
-#define TLSCFG_PARAMTYPE_ENUM         3
-
-#define TLSCFG_PARAMINFO_FMT_100      100
-
 typedef void* CFSRPS;
 
 typedef struct tagCFSRPS_CONFIGINFO {
@@ -63,33 +54,14 @@ typedef struct tagCFSRPS_CONFIGINFO {
 
 } CFSRPS_CONFIGINFO;
 
-typedef struct tagTLSCFG_CONFIGINFO {
-
-  char szName[65];
-  char szDesc[129];
-
-} TLSCFG_CONFIGINFO;
-
 typedef struct tagCFSRPS_PARAMINFO {
 
   int  fmt;
   char szParam[33];
   int  type;
-  char szValue[256];
+  char* szValue;
 
 } CFSRPS_PARAMINFO;
-
-typedef struct tagTLSCFG_PARAMINFO {
-
-  int  fmt;
-  char szName[65];
-  int  param;
-  int  type;
-  int  availLevel;
-  int  level;
-  char szValue[129];
-
-} TLSCFG_PARAMINFO;
 
 CFSRPS
   CFSRPS_Constructor
@@ -119,12 +91,5 @@ CSRESULT
   CFSRPS_IterNext
     (CFSRPS This,
      CFSRPS_PARAMINFO* param);
-
-CSRESULT
-  TLSCFG_LsParam
-    (char*  szName,
-     long   filter,
-     int    fmt,
-     CSLIST Listing);
 
 #endif
