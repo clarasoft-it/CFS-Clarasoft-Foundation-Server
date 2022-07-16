@@ -77,15 +77,13 @@ CSRESULT
   CSWSCK_CloseChannel
     (CSWSCK,
      char*,
-     uint64_t,
-     int);
+     uint64_t);
 
 CSRESULT
   CSWSCK_CloseSession
     (CSWSCK,
      char*,
-     uint64_t,
-     int);
+     uint64_t);
 
 CSRESULT
   CSWSCK_GetData
@@ -102,7 +100,6 @@ CSRESULT
   CSWSCK_OpenChannel
     (CSWSCK This,
      CFSENV pEnv,
-     char* szSessionConfig,
      int connfd,
      int* e);
 
@@ -110,7 +107,6 @@ CSRESULT
   CSWSCK_OpenSession
     (CSWSCK This,
      CFSENV pEnv,
-     char* szSessionConfig,
      char* szHost,
      char* szPort,
      int* e);
@@ -119,8 +115,7 @@ CSRESULT
   CSWSCK_Ping
     (CSWSCK,
      char*,
-     uint64_t,
-     int);
+     uint64_t);
 
 CSRESULT
   CSWSCK_QueryConfig
@@ -131,8 +126,7 @@ CSRESULT
 CSRESULT
   CSWSCK_Receive
     (CSWSCK,
-     uint64_t*,
-     int);
+     uint64_t*);
 
 CSRESULT
   CSWSCK_Send
@@ -140,7 +134,6 @@ CSRESULT
      long,
      char*,
      uint64_t,
-     char,
-     int);
+     char);
 
 #endif
