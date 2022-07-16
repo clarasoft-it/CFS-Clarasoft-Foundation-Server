@@ -818,7 +818,6 @@ CSRESULT
                              (Session,
                               This->headerSlab + offset,
                               &size,
-                              -1,
                               &e);
 
     if (CS_SUCCEED(hResult)) {
@@ -936,7 +935,6 @@ CSRESULT
                                    (Session,
                                     This->dataSlab + partialDataSize,
                                     &size,
-                                    -1,
                                     &e))) {
           return CS_FAILURE;
         }
@@ -1155,7 +1153,6 @@ CSRESULT
                                 (Session,
                                  This->headerSlab,
                                  &size,
-                                 -1,
                                  &e))) {
 
     ///////////////////////////////////////////////////////////////////////
@@ -1170,7 +1167,6 @@ CSRESULT
                                  (Session,
                                   This->pOutData,
                                   &size,
-                                  -1,
                                   &e))) {
         return CS_FAILURE;
       }
@@ -1190,7 +1186,6 @@ CSRESULT
                                      (Session,
                                       pFragment->data,
                                       &size,
-                                      -1,
                                       &e))) {
             return CS_FAILURE;
           }
@@ -1213,7 +1208,6 @@ CSRESULT
                                (Session,
                                 This->headerSlab + offset,
                                 &size,
-                                -1,
                                 &e);
 
       if (CS_SUCCEED(hResult)) {
@@ -1337,7 +1331,6 @@ CSRESULT
                                    (Session,
                                     This->dataSlab + partialDataSize,
                                     &size,
-                                    -1,
                                     &e))) {
 
           hResult = CS_FAILURE;
@@ -1560,7 +1553,6 @@ CSRESULT
                                     (Session,
                                      This->headerSlab,
                                      &DataSize,
-                                     -1,
                                      &e))) {
             }
 
