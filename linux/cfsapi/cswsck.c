@@ -116,15 +116,13 @@ CSRESULT
   CSWSCK_CloseChannel
     (CSWSCK* This,
      char* szBuffer,
-     uint64_t iDataSize,
-     int timeout);
+     uint64_t iDataSize);
 
 CSRESULT
   CSWSCK_CloseSession
     (CSWSCK* This,
      char* szBuffer,
-     uint64_t iDataSize,
-     int timeout);
+     uint64_t iDataSize);
 
 CSRESULT
   CSWSCK_GetData
@@ -137,7 +135,6 @@ CSRESULT
   CSWSCK_OpenChannel
     (CSWSCK* This,
      CFSENV* pEnv,
-     char* szSessionConfig,
      int connfd,
      int* e);
 
@@ -145,7 +142,6 @@ CSRESULT
   CSWSCK_OpenSession
     (CSWSCK* This,
      CFSENV* pEnv,
-     char* szSessionConfig,
      char* szHost,
      char* szPort,
      int* e);
@@ -154,8 +150,7 @@ CSRESULT
   CSWSCK_Ping
     (CSWSCK* This,
      char* szData,
-     uint64_t iDataSize,
-     int timeout);
+     uint64_t iDataSize);
 
 CSRESULT
   CSWSCK_QueryConfig
@@ -166,8 +161,7 @@ CSRESULT
 CSRESULT
   CSWSCK_Receive
     (CSWSCK* This,
-     uint64_t* iDataSize,
-     int timeout);
+     uint64_t* iDataSize);
 
 CSRESULT
   CSWSCK_Send
@@ -175,8 +169,7 @@ CSRESULT
      long     operation,
      char*    data,
      uint64_t iDataSize,
-     char     fin,
-     int      timeout);
+     char     fin);
 
 uint64_t
   ntohll
@@ -190,7 +183,7 @@ uint64_t
    public functions
 --------------------------------------------------------------------------- */
 char*
-  CSSTR_StrTok
+  CSSTR_PRV_StrTok
     (char* szBuffer,
      char* szDelimiter);
 
@@ -254,8 +247,7 @@ CSRESULT
   CSWSCK_CloseSession
     (CSWSCK* This,
      char* szBuffer,
-     uint64_t iDataSize,
-     int timeout)
+     uint64_t iDataSize)
 {
    int e;
 
@@ -264,7 +256,7 @@ CSRESULT
 
        // Send Websocket close to client
        CSWSCK_Send(This, CSWSCK_OPER_CLOSE,
-                            szBuffer, iDataSize, CSWSCK_FIN_ON, timeout);
+                            szBuffer, iDataSize, CSWSCK_FIN_ON);
 
        CFS_CloseSession(This->Session, &e);
        This->Session = 0;
@@ -288,8 +280,7 @@ CSRESULT
   CSWSCK_CloseChannel
     (CSWSCK* This,
      char* szBuffer,
-     uint64_t iDataSize,
-     int timeout)
+     uint64_t iDataSize)
 {
    int e;
 
@@ -299,7 +290,7 @@ CSRESULT
 
        // Send Websocket close to client
        CSWSCK_Send(This, CSWSCK_OPER_CLOSE,
-                            szBuffer, iDataSize, CSWSCK_FIN_ON, timeout);
+                            szBuffer, iDataSize, CSWSCK_FIN_ON);
 
        CFS_CloseChannel(This->Session, &e);
        This->Session = 0;
@@ -380,7 +371,6 @@ CSRESULT
   CSWSCK_OpenChannel
     (CSWSCK* This,
      CFSENV* pEnv,
-     char* szSessionConfig,
      int connfd,
      int* e) {
 
@@ -407,7 +397,6 @@ CSRESULT
 
   if ((This->Session = CFS_OpenChannel
                             (pEnv,
-                             szSessionConfig,
                              connfd,
                              e)) == 0) {
 
@@ -453,7 +442,7 @@ CSRESULT
   ///////////////////////////////////////////////////////
 
   found = 0;
-  pTok = CSSTR_StrTok(szHeader, ",");
+  pTok = CSSTR_PRV_StrTok(szHeader, ",");
 
   if (pTok) {
 
@@ -462,7 +451,7 @@ CSRESULT
       found = 1;
     }
     else {
-      while ((pTok = CSSTR_StrTok(0, ",")) != 0) {
+      while ((pTok = CSSTR_PRV_StrTok(0, ",")) != 0) {
         CSSTR_Trim(pTok, szBuffer);
         if (!strcmp(szBuffer, "UPGRADE")) {
           found = 1;
@@ -550,7 +539,6 @@ CSRESULT
                      (This->Session,
                       szHTTPResponse,
                       &size,
-                      -1,
                       e);
 
   if (CS_FAIL(hResult)) {
@@ -573,7 +561,6 @@ CSRESULT
   CSWSCK_OpenSession
     (CSWSCK* This,
      CFSENV* pEnv,
-     char* szSessionConfig,
      char* szHost,
      char* szPort,
      int* e) {
@@ -610,7 +597,6 @@ CSRESULT
 
   if ((This->Session = CFS_OpenSession
                   (pEnv,
-                   szSessionConfig,
                    szHost,
                    szPort,
                    e)) == 0) {
@@ -668,8 +654,7 @@ CSRESULT
   CSWSCK_Ping
     (CSWSCK* This,
      char* szData,
-     uint64_t iDataSize,
-     int timeout) {
+     uint64_t iDataSize) {
 
   char szFrameHdr[2];
   int e;
@@ -705,7 +690,6 @@ CSRESULT
       hResult = This->Session->lpVtbl->CFS_WriteRecord(This->Session,
                                               szFrameHdr,
                                               &iHeaderSize,
-                                              timeout,
                                               &e);
 
       // Send data
@@ -715,7 +699,6 @@ CSRESULT
         hResult = This->Session->lpVtbl->CFS_WriteRecord(This->Session,
                                                 szData,
                                                 &iDataSize,
-                                                timeout,
                                                 &e);
       }
     }
@@ -728,7 +711,6 @@ CSRESULT
     hResult = This->Session->lpVtbl->CFS_WriteRecord(This->Session,
                                             szFrameHdr,
                                             &iHeaderSize,
-                                            timeout,
                                             &e);
   }
 
@@ -768,8 +750,7 @@ CSRESULT
 CSRESULT
   CSWSCK_Receive
     (CSWSCK* This,
-     uint64_t* iDataSize,
-     int timeout) {
+     uint64_t* iDataSize) {
 
   char ws_mask[4];
   char ws_header[14];
@@ -804,7 +785,7 @@ CSRESULT
                            (This->Session,
                             ws_header,
                             &iSize,
-                            timeout, &e);
+                            &e);
 
   if (CS_SUCCEED(hResult)) {
 
@@ -825,7 +806,7 @@ CSRESULT
                                   (This->Session,
                                   (char*)&iDataSize_16,
                                   &iSize,
-                                  timeout, &e);
+                                  &e);
 
          This->dataSize = ntohs(iDataSize_16);
 
@@ -839,7 +820,7 @@ CSRESULT
                                   (This->Session,
                                    (char*)&iDataSize_64,
                                    &iSize,
-                                   timeout, &e);
+                                   &e);
 
          This->dataSize = ntohll(iDataSize_64);
          break;
@@ -878,7 +859,7 @@ CSRESULT
                                 (This->Session,
                                  ws_mask,
                                  &iSize,
-                                 timeout, &e);
+                                 &e);
       }
 
       if (CS_FAIL(hResult)) {
@@ -906,7 +887,7 @@ CSRESULT
                                (This->Session,
                                 This->dataBuffer,
                                 &(This->dataSize),
-                                timeout, &e);
+                                &e);
 
       if (CS_FAIL(hResult)) {
         return CS_FAILURE | CSWSCK_OPER_CFSAPI | CS_DIAG(hResult);
@@ -946,7 +927,7 @@ CSRESULT
                                  (This->Session,
                                   ws_mask,
                                   &iSize,
-                                  timeout, &e);
+                                  &e);
       }
 
       if (CS_FAIL(hResult)) {
@@ -993,8 +974,7 @@ CSRESULT
                                 CSWSCK_OPER_PONG,
                                 This->dataBuffer,
                                 This->dataSize,
-                                CSWSCK_FIN_ON,
-                                timeout);
+                                CSWSCK_FIN_ON);
 
           if (CS_FAIL(hResult)) {
             return hResult;
@@ -1010,8 +990,7 @@ CSRESULT
                                 CSWSCK_OPER_PONG,
                                 0,
                                 0,
-                                CSWSCK_FIN_ON,
-                                timeout);
+                                CSWSCK_FIN_ON);
 
           if (CS_FAIL(hResult)) {
             return hResult;
@@ -1063,8 +1042,7 @@ CSRESULT
     (CSWSCK* This,
      char** FrameBuffer,
      uint64_t* iDataSize,
-     long allocMode,
-     int timeout) {
+     long allocMode) {
 
   char ws_mask[4];
   char ws_header[14];
@@ -1102,7 +1080,7 @@ CSRESULT
                            (This->Session,
                             ws_header,
                             &iSize,
-                            timeout, &e);
+                            &e);
 
   if (CS_SUCCEED(hResult)) {
 
@@ -1123,7 +1101,7 @@ CSRESULT
                                   (This->Session,
                                   (char*)&iDataSize_16,
                                   &iSize,
-                                  timeout, &e);
+                                  &e);
 
          *iDataSize = ntohs(iDataSize_16);
 
@@ -1137,7 +1115,7 @@ CSRESULT
                                   (This->Session,
                                    (char*)&iDataSize_64,
                                    &iSize,
-                                   timeout, &e);
+                                   &e);
 
          *iDataSize = ntohll(iDataSize_64);
          break;
@@ -1176,7 +1154,7 @@ CSRESULT
                                 (This->Session,
                                  ws_mask,
                                  &iSize,
-                                 timeout, &e);
+                                 &e);
 
       }
 
@@ -1200,7 +1178,7 @@ CSRESULT
                                (This->Session,
                                 *FrameBuffer,
                                 iDataSize,
-                                timeout, &e);
+                                &e);
 
       if (CS_FAIL(hResult)) {
 
@@ -1243,7 +1221,7 @@ CSRESULT
                                  (This->Session,
                                   ws_mask,
                                   &iSize,
-                                  timeout, &e);
+                                  &e);
       }
 
       if (CS_FAIL(hResult)) {
@@ -1289,8 +1267,7 @@ CSRESULT
                                 CSWSCK_OPER_PONG,
                                 *FrameBuffer,
                                 *iDataSize,
-                                CSWSCK_FIN_ON,
-                                timeout);
+                                CSWSCK_FIN_ON);
 
           if (CS_FAIL(hResult)) {
             return hResult;
@@ -1306,8 +1283,7 @@ CSRESULT
                                 CSWSCK_OPER_PONG,
                                 0,
                                 0,
-                                CSWSCK_FIN_ON,
-                                timeout);
+                                CSWSCK_FIN_ON);
 
           if (CS_FAIL(hResult)) {
             return hResult;
@@ -1360,8 +1336,7 @@ CSRESULT
      long     operation,
      char*    data,
      uint64_t iDataSize,
-     char     fin,
-     int      timeout)
+     char     fin)
 {
   uint16_t iSize16;
   uint64_t iSize64;
@@ -1408,7 +1383,7 @@ CSRESULT
                               (This->Session,
                                ws_header,
                                &iSize,
-                               timeout, &e);
+                               &e);
 
     if (CS_SUCCEED(hResult)) {
 
@@ -1419,7 +1394,7 @@ CSRESULT
                                     (This->Session,
                                      data,
                                      &iDataSize,
-                                     timeout, &e);
+                                     &e);
       }
       else {
 
@@ -1428,7 +1403,7 @@ CSRESULT
                                     (This->Session,
                                      data,
                                      &iDataSize,
-                                     timeout, &e);
+                                     &e);
       }
     }
   }
@@ -1459,7 +1434,7 @@ CSRESULT
                                     (This->Session,
                                      data,
                                      &iDataSize,
-                                     timeout, &e);
+                                     &e);
 
          break;
 
@@ -1523,14 +1498,9 @@ uint64_t htonll(uint64_t value)
 }
 
 
-
-
-
-
-
 //////////////////////////////////////////////////////////////////////////////
 //
-// CSSTR_StrTok
+// CSSTR_PRV_StrTok
 //
 // This function is like the strtok function but can handle
 // delimiters more than one charater in length.
@@ -1540,7 +1510,7 @@ uint64_t htonll(uint64_t value)
 //////////////////////////////////////////////////////////////////////////////
 
 char*
-  CSSTR_StrTok
+  CSSTR_PRV_StrTok
     (char* szBuffer,
      char* szDelimiter)
 {
