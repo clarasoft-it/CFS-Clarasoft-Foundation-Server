@@ -202,7 +202,7 @@ CSRESULT
   CSAP_CloseService
     (CSAP* This)
 {
-  CSWSCK_CloseSession(This->pSession, 0, 0, -1);
+  CSWSCK_CloseSession(This->pSession, 0, 0);
   return CS_SUCCESS;
 }
 
@@ -308,14 +308,14 @@ CSRESULT
   }
 
   if (CS_SUCCEED(CSWSCK_OpenSession(This->pSession,
-                            0, szService, 0, 0, &e))) {
+                            0, szService, 0, &e))) {
 
     if (CS_SUCCEED(CSWSCK_Send(This->pSession,
                                CSWSCK_OPER_TEXT,
                                szBuffer,
-                               strlen(szBuffer), CSWSCK_FIN_ON, -1))) {
+                               strlen(szBuffer), CSWSCK_FIN_ON))) {
       // read response
-      if (CS_SUCCEED(CSWSCK_Receive(This->pSession, &size, -1))) {
+      if (CS_SUCCEED(CSWSCK_Receive(This->pSession, &size))) {
 
         pHandshake = (char*)CSWSCK_GetDataRef(This->pSession);
 
@@ -415,7 +415,7 @@ CSRESULT
 
   // Read control frame
 
-  if (CS_SUCCEED(CSWSCK_Receive(This->pSession, &Size, -1))) {
+  if (CS_SUCCEED(CSWSCK_Receive(This->pSession, &Size))) {
 
     // we must at least have the CTL frame
     if (Size >= 80) {
@@ -575,8 +575,7 @@ CSRESULT
               CSWSCK_OPER_TEXT,
               This->pOutData,
               (uint64_t)OutSize,
-              CSWSCK_FIN_ON,
-              -1);
+              CSWSCK_FIN_ON);
 
   CSLIST_Clear(This->OutDataParts);
 
