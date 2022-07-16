@@ -284,11 +284,10 @@ int main(int argc, char** argv)
   sigaction(SIGTERM, &sa, NULL);
   sigaction(SIGCHLD, &sa, NULL);
   
-  // Get broker repository configuration
-
+  // Get broker repository configuration (making sure no more than 
+  // CFSRPS_PATH_MAXBUFF chars are copied from the outside)
   strncpy(szConfig, argv[3], CFSRPS_PATH_MAXBUFF);
-  szConfig[CFSRPS_PATH_MAXBUFF-1] = 0; // make sure we have a null-terminated
-                                       // string no longer than the buffer
+  szConfig[CFSRPS_PATH_MAXBUFF-1] = 0; // make sure we have a null
 
   syslog(LOG_INFO, "CSAP BROKER starting - config: %s", szConfig);
 
@@ -426,7 +425,6 @@ int main(int argc, char** argv)
     if (CS_SUCCEED(hResult = CSWSCK_OpenChannel
                                  (pCSAP->pSession,
                                   pEnv,
-                                  szConfig,
                                   conn_fd, &rc))) {
 
       if (CS_DIAG(hResult) == CSWSCK_DIAG_WEBSOCKET) {
@@ -447,7 +445,7 @@ int main(int argc, char** argv)
         syslog(LOG_INFO, "ERROR: Invalid Broker service mode");
       }
 
-      CSWSCK_CloseChannel(pCSAP->pSession, 0, 0, 30);
+      CSWSCK_CloseChannel(pCSAP->pSession, 0, 0);
     }
   }
   else {
@@ -483,7 +481,6 @@ int main(int argc, char** argv)
         if (CS_SUCCEED(hResult = CSWSCK_OpenChannel
                                           (pCSAP->pSession, 
                                           NULL,
-                                          szConfig, 
                                           conn_fd, 
                                           &rc))) {
 
@@ -501,7 +498,7 @@ int main(int argc, char** argv)
                 break;
             }
 
-            CSWSCK_CloseChannel(pCSAP->pSession, 0, 0, 30);
+            CSWSCK_CloseChannel(pCSAP->pSession, 0, 0);
           }
           else {
             syslog(LOG_INFO, "ERROR: Invalid Broker service mode");
@@ -617,7 +614,7 @@ CSRESULT
 
   uint64_t size;
 
-  if (CS_SUCCEED(CSWSCK_Receive(pCSAP->pSession, &size, -1))) {
+  if (CS_SUCCEED(CSWSCK_Receive(pCSAP->pSession, &size))) {
 
     if (size > g_CurHandsakeSlab) {
       free(pHandshakeIn);
@@ -672,8 +669,7 @@ CSRESULT
                       CSWSCK_OPER_TEXT,
                       pHandshake,
                       size,
-                      CSWSCK_FIN_ON,
-                      -1);
+                      CSWSCK_FIN_ON);
 
           CSAP_Clear(pCSAP);
 
@@ -702,8 +698,7 @@ CSRESULT
                       CSWSCK_OPER_TEXT,
                       pHandshake,
                       size,
-                      CSWSCK_FIN_ON,
-                      -1);
+                      CSWSCK_FIN_ON);
 
           return CS_FAILURE;
         }
@@ -727,8 +722,7 @@ CSRESULT
                     CSWSCK_OPER_TEXT,
                     pHandshake,
                     size,
-                    CSWSCK_FIN_ON,
-                    -1);
+                    CSWSCK_FIN_ON);
 
         return CS_FAILURE;
       }
@@ -753,8 +747,7 @@ CSRESULT
                   CSWSCK_OPER_TEXT,
                   pHandshake,
                   size,
-                  CSWSCK_FIN_ON,
-                  -1);
+                  CSWSCK_FIN_ON);
 
       return CS_FAILURE;
     }
@@ -791,7 +784,7 @@ CSRESULT
 
   SERVICEINFOSTRUCT* ServiceInfo;
 
-  if (CS_SUCCEED(CSWSCK_Receive(pCSAP->pSession, &size, -1))) {
+  if (CS_SUCCEED(CSWSCK_Receive(pCSAP->pSession, &size))) {
 
     if (size > g_CurHandsakeSlab) {
       free(pHandshakeIn);
@@ -850,8 +843,7 @@ CSRESULT
                       CSWSCK_OPER_TEXT,
                       pHandshake,
                       size,
-                      CSWSCK_FIN_ON,
-                      -1);
+                      CSWSCK_FIN_ON);
 
           CSAP_Clear(pCSAP);
 
@@ -881,8 +873,7 @@ CSRESULT
                       CSWSCK_OPER_TEXT,
                       pHandshake,
                       size,
-                      CSWSCK_FIN_ON,
-                      -1);
+                      CSWSCK_FIN_ON);
 
           return CS_FAILURE;
         }
@@ -906,8 +897,7 @@ CSRESULT
                     CSWSCK_OPER_TEXT,
                     pHandshake,
                     size,
-                    CSWSCK_FIN_ON,
-                    -1);
+                    CSWSCK_FIN_ON);
 
         return CS_FAILURE;
       }
@@ -934,8 +924,7 @@ CSRESULT
                   CSWSCK_OPER_TEXT,
                   pHandshake,
                   size,
-                  CSWSCK_FIN_ON,
-                  -1);
+                  CSWSCK_FIN_ON);
 
       return CS_FAILURE;
 
@@ -970,7 +959,7 @@ CSRESULT
 
   CSAP_SERVICEHANDLERPROC CSAP_ServiceHandler;
 
-  if (CS_SUCCEED(CSWSCK_Receive(pCSAP->pSession, &size, -1))) {
+  if (CS_SUCCEED(CSWSCK_Receive(pCSAP->pSession, &size))) {
 
     if (size > g_CurHandsakeSlab) {
       free(pHandshakeIn);
@@ -1028,8 +1017,7 @@ CSRESULT
                       CSWSCK_OPER_TEXT,
                       pHandshake,
                       size,
-                      CSWSCK_FIN_ON,
-                      -1);
+                      CSWSCK_FIN_ON);
 
           CSAP_Clear(pCSAP);
 
@@ -1058,8 +1046,7 @@ CSRESULT
                       CSWSCK_OPER_TEXT,
                       pHandshake,
                       size,
-                      CSWSCK_FIN_ON,
-                      -1);
+                      CSWSCK_FIN_ON);
 
           return CS_FAILURE;
         }
@@ -1083,8 +1070,7 @@ CSRESULT
                     CSWSCK_OPER_TEXT,
                     pHandshake,
                     size,
-                    CSWSCK_FIN_ON,
-                    -1);
+                    CSWSCK_FIN_ON);
 
         return CS_FAILURE;
       }
@@ -1109,8 +1095,7 @@ CSRESULT
                   CSWSCK_OPER_TEXT,
                   pHandshake,
                   size,
-                  CSWSCK_FIN_ON,
-                  -1);
+                  CSWSCK_FIN_ON);
 
       return CS_FAILURE;
 
@@ -1163,8 +1148,7 @@ CSRESULT
                 CSWSCK_OPER_TEXT,
                 pHandshake,
                 size,
-                CSWSCK_FIN_ON,
-                -1);
+                CSWSCK_FIN_ON);
 
     return CS_FAILURE;
   }
@@ -1194,8 +1178,7 @@ CSRESULT
                 CSWSCK_OPER_TEXT,
                 pHandshake,
                 size,
-                CSWSCK_FIN_ON,
-                -1);
+                CSWSCK_FIN_ON);
 
     return CS_FAILURE;
   }
