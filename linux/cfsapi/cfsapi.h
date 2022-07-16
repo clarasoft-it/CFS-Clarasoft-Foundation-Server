@@ -84,10 +84,10 @@ typedef struct tagCFS_SESSION CFS_SESSION;
 
 typedef struct tagCFSVTBL {
 
-  CSRESULT (*CFS_Read)         (CFS_SESSION*, char*, uint64_t*, int, int*);
-  CSRESULT (*CFS_ReadRecord)   (CFS_SESSION*, char*, uint64_t*, int, int*);
-  CSRESULT (*CFS_Write)        (CFS_SESSION*, char*, uint64_t*, int, int*);
-  CSRESULT (*CFS_WriteRecord)  (CFS_SESSION*, char*, uint64_t*, int, int*);
+  CSRESULT (*CFS_Read)         (CFS_SESSION*, char*, uint64_t*, int*);
+  CSRESULT (*CFS_ReadRecord)   (CFS_SESSION*, char*, uint64_t*, int*);
+  CSRESULT (*CFS_Write)        (CFS_SESSION*, char*, uint64_t*, int*);
+  CSRESULT (*CFS_WriteRecord)  (CFS_SESSION*, char*, uint64_t*, int*);
 
 } CFSVTBL;
 
@@ -139,7 +139,6 @@ CSRESULT
 CFS_SESSION*
   CFS_OpenChannel
     (CFSENV pEnv,
-     char* szSessionConfig,
      int connfd,
      int* e);
 
@@ -150,7 +149,6 @@ CFSENV
 CFS_SESSION*
   CFS_OpenSession
     (CFSENV pEnv,
-     char* szSessionConfig,
      char* szHost,
      char* szPort,
      int* e);
