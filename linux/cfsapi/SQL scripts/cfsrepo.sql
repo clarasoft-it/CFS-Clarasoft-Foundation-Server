@@ -2,7 +2,7 @@
 --  CFS Repository (PostgreSQL)
 --  DDL
 
-
+ 
 
 CREATE TABLE RPSCFM (
         DOMAIN VARCHAR(32)  NOT NULL ,
