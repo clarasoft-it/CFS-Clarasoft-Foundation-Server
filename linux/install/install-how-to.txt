@@ -1,1 +1,160 @@
-asdasd
+-----------------------------------------------------------------------------------------------------------------
+Clarasoft I.T. Solutions Inc.
+Clarasoft Foundation Server (CFS)
+Installation how-to
+-----------------------------------------------------------------------------------------------------------------
+
+The following describes how to install the Clarasoft Foundation Server (CFS) on a Linux system. There are two installations:
+
+  - An installation without PostgreSQL support
+  - An installation with PostgreSQL; this requires that POstgreSQL be installed on the system and that libpq.so be installed
+  
+-----------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------
+Installation without PostgreSQL support
+-----------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------
+
+1) On your local machine, create an installation directory where you want to extract the sources.
+
+  mkdir <your installtion directory>
+
+2) Move to the installation directory:
+
+  cd <your installtion directory>
+
+3) From the Clarasoft GitHub repository, under CFS-Clarasoft-Foundation-Server/linux/install, download the cfs-release-1.0.tar.gz archive into the installation directory
+
+4) Extract the archive with the following command:
+
+  tar -xvf cfs-release-1.0.tar.gz
+  
+This will create two directories (bin, sources) under the installation directory. A makefile will also be extracted in the installation directory.
+
+5) On the command line (the current directory must be the installation directory where the archive has been extracted), run the following command:
+  
+   make install
+   
+This will build the clarad, clarah and csapbrkr programs in the bin directory under the installation directory. The libcslib.so and libcfsapi.so shared libraries will be built and moved the /usr/lib/clarasoft directory (the makefile will create this directory) and the CFS header files will be copied over to the /usr/include/clarasoft directory (the makefile will also create this directory).
+
+The installation is now complete
+
+Note: this does not install PostgreSQL and the CFS repository database; PostgreSQL must be installed separately. Once PostgreSQL is installed,
+      run the ./SQL/cfsrepo-ddl.sql script from PostgreSQL. This will create the CFS repository tables. You must also rebuild the CFS by
+      issuing the following command:
+      
+      make update-with-sql
+
+  
+-----------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------
+Installation with PostgreSQL support
+-----------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------
+
+Before installing the CFS with PostgreSQL support, PostgreSQL must be installed as well as the libpq.so library. Your user must have the authority to create databases and tables in PostgreSQL.
+
+1) On your local machine, create an installation directory where you want to extract the sources.
+
+  mkdir <your installtion directory>
+
+2) Move to the installation directory:
+
+  cd <your installtion directory>
+
+3) From the Clarasoft GitHub repository, under CFS-Clarasoft-Foundation-Server/linux/install, download the cfs-release-1.0.tar.gz archive into the installation directory
+
+4) Extract the archive with the following command:
+
+  tar -xvf cfs-release-1.0.tar.gz
+  
+This will create two directories (bin, sources) under the installation directory. A makefile will also be extracted in the installation directory.
+
+5) On the command line (the current directory must be the installation directory where the archive has been extracted), run the following command:
+  
+   make install-with-sql
+   
+This will build the clarad, clarah and csapbrkr programs in the bin directory under the installation directory. The libcslib.so and libcfsapi.so shared libraries will be built and moved the /usr/lib/clarasoft directory (the makefile will create this directory) and the CFS header files will be copied over to the /usr/include/clarasoft directory (the makefile will also create this directory).
+
+The installation of CFS is now complete. This does not install PostgreSQL and the CFS repository database; PostgreSQL must be installed separately. Once PostgreSQL is installed, run the ./SQL/cfsrepo-ddl.sql script from the PostgreSQL command line. From the Linux shell, run the psql command:
+  
+  psql
+
+THis will open the psql prompt. At the psql prompt, execute the <installation directory>/sources/SQL/cfsrepo-ddl.sql script from the psql prompt:
+
+  \i <installation directory>/sources/SQL/cfsrepo-ddl.sql
+
+This will create the CFS repository database and tables. The database will be named cfsrepo. The cfsrepo database must now be configured to be in trust mode. because CFS repository functions assume the database can be used without providing a user/password. To avoid having to provide a user/password everytime one wants to access the CFS Repository, the database (named cfsrepo) will specify trust authentication mode and only on the local machine (localhost).
+
+To achieve this, edit the pg_hba.conf file to specify trust authentication; the location of this file may be retrieved by issuing the following command at the Linux shell command line:
+
+    psql -t -P format=unaligned -c 'SHOW hba_file;'
+
+The output will be something like:
+
+    /etc/postgresql/14/main/pg_hba.conf
+
+With a text editor, open the pg_hba.conf file (it is a good idea to make a copy of this file before editing it).
+
+The pg_hba.conf file has entries like the following:
+
+      # TYPE  DATABASE        USER            ADDRESS                 METHOD
+
+      # "local" is for Unix domain socket connections only
+      local   all             all                                     peer
+      # IPv4 local connections:
+      host    all             all             127.0.0.1/32            scram-sha-256
+      # IPv6 local connections:
+      host    all             all             ::1/128                 scram-sha-256
+
+
+It is IMPORTANT that the authentication rules be placed in the proper order.
+PostgreSQL will examine each line in sequence until it finds one that matches 
+the conditions under which the connection is requested. It is therefore
+recommended to put the CFS Repository database connection configuration(s)
+before lines that specify "all" under the DATABSE column:
+
+      # TYPE  DATABASE        USER            ADDRESS                 METHOD
+
+      #CFS Repository --------------------------------------------------------------
+      local   cfsrepo         all                                     trust
+      local   cfsrepo         all             127.0.0.1/32            trust
+      local   cfsrepo         all             ::1/128                 trust
+      #-----------------------------------------------------------------------------
+
+      # "local" is for Unix domain socket connections only
+      local   all             all                                     peer
+      # IPv4 local connections:
+      host    all             all             127.0.0.1/32            scram-sha-256
+      # IPv6 local connections:
+      host    all             all             ::1/128                 scram-sha-256
+
+
+The aboce example only allows connections from the system hosting the 
+CFS Repository, either using local sockets or TCP sockets. 
+
+ 
+-----------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------
+Updating CFS
+-----------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------
+
+To rebuild the CFS, for example if you make changes to the source code in the sources directory, run the following command from the installation directory (this will skip the creation of the clarasoft directories under /usr/lib and /usr/include, which are already created by running the above installation):
+
+  make update
+  
+  OR
+  
+  make update-with-sql
+  
+  
+  The latter command requires that CFS be installed with PostgreSQL support.
+  
+ 
