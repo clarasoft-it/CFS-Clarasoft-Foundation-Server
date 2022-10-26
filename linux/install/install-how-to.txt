@@ -102,14 +102,13 @@ With a text editor, open the pg_hba.conf file (it is a good idea to make a copy 
 
 The pg_hba.conf file has entries like the following:
 
-      # TYPE  DATABASE        USER            ADDRESS                 METHOD
-
-      # "local" is for Unix domain socket connections only
-      local   all             all                                     peer
-      # IPv4 local connections:
-      host    all             all             127.0.0.1/32            scram-sha-256
-      # IPv6 local connections:
-      host    all             all             ::1/128                 scram-sha-256
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+# "local" is for Unix domain socket connections only
+local   all             all                                     peer
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            scram-sha-256
+# IPv6 local connections:
+host    all             all             ::1/128                 scram-sha-256
 
 
 It is IMPORTANT that the authentication rules be placed in the proper order.
@@ -120,18 +119,18 @@ before lines that specify "all" under the DATABSE column:
 
       # TYPE  DATABASE        USER            ADDRESS                 METHOD
 
-      #CFS Repository --------------------------------------------------------------
-      local   cfsrepo         all                                     trust
-      local   cfsrepo         all             127.0.0.1/32            trust
-      local   cfsrepo         all             ::1/128                 trust
-      #-----------------------------------------------------------------------------
+#CFS Repository --------------------------------------------------------------
+local   cfsrepo         all                                     trust
+local   cfsrepo         all             127.0.0.1/32            trust
+local   cfsrepo         all             ::1/128                 trust
+#-----------------------------------------------------------------------------
 
-      # "local" is for Unix domain socket connections only
-      local   all             all                                     peer
-      # IPv4 local connections:
-      host    all             all             127.0.0.1/32            scram-sha-256
-      # IPv6 local connections:
-      host    all             all             ::1/128                 scram-sha-256
+# "local" is for Unix domain socket connections only
+local   all             all                                     peer
+# IPv4 local connections:
+host    all             all             127.0.0.1/32            scram-sha-256
+# IPv6 local connections:
+host    all             all             ::1/128                 scram-sha-256
 
 
 The aboce example only allows connections from the system hosting the 
