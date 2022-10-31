@@ -3,18 +3,16 @@
   Clarasoft Foundation Server
 
   Example program:
-    generic echo client program for generic echo service example program.
+    generic http client program
 
   Version 1.0.0
 
   Build with:
 
-    gcc -g basic-echo-client.c -o basic-echo-client -lcfsapi
+    gcc -g basic-http-client.c -o basic-http-client -lcfsapi
 
   Distributed under the MIT license
-
   Copyright (c) 2013 Clarasoft I.T. Solutions Inc.
-
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files
   (the "Software"), to deal in the Software without restriction,
@@ -31,48 +29,42 @@
   ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH
   THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 ========================================================================== */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include <clarasoft/cfs.h>
 
-int main(int argc, char** argv) {
+// gcc -g basic-http-client.c -o driver -lcfsapi
+
+int main() {
 
   long size;
 
-  char szInBuffer[256];
-  char szOutBuffer[262];
+  char szBuffer[4097];
 
+  CSHTTP pWeb;
   CFS_SESSION* pSession;
 
-  if (argc < 2) {
-    printf("Missing program argument: usage ./echo-test \"string-to-echo\"\n");
-    return 1;
-  }
+  pWeb = CSHTTP_Constructor();
 
-  pSession = CFS_OpenSession(NULL, NULL, "localhost", "11009");
+  CSHTTP_StartRequest(pWeb, 
+                      CSHTTP_METHOD_GET, 
+                      CSHTTP_VER_1_0, 
+                      "/");
+
+  pSession = CFS_OpenSession(NULL, NULL, "localhost", "80");
 
   if (pSession != NULL) {
+    CSHTTP_SendRequest(pWeb, pSession);
 
-    printf("Connected\n");
-    strcpy(szOutBuffer, argv[1]);
-    size = strlen(szOutBuffer);
-    printf("Sending string: %s (%ld bytes)\n", argv[1], size);
-    pSession->lpVtbl->CFS_SendRecord(pSession, szOutBuffer, &size);
-
-    size = 261;
-    pSession->lpVtbl->CFS_Receive(pSession, szInBuffer, &size);
-    szInBuffer[size] = 0;
-    printf("Received %ld bytes: %s\n", size, szInBuffer);
+    printf("\n\n%s\n", CSHTTP_GetDataRef(pWeb));
   }
-  else {
-    printf("Connection failure\n");
-  }
+    
+  CSHTTP_Destructor(&pWeb);
+  CFS_CloseSession(&pSession);
 
   return 0;
 }
