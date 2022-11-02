@@ -1,6 +1,6 @@
 /* ==========================================================================
 
-  Clarasoft Foundation Server
+  Clarasoft Foundation Server OS/400 IBM i
 
   CFS Service Handler
   Version 7.0.0
