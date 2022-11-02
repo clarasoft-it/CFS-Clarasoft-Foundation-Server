@@ -46,12 +46,11 @@
 
 #include <clarasoft/cfs.h>
 
-typedef void (*INPROCHANDLER)(CSWSCK* pSession);
+typedef void (*INPROCHANDLER)(CSWSCK pSession);
 
 void* pInprocServer;
 
 INPROCHANDLER pInprocHandler;
-
 
 int conn_fd;
 int stream_fd;
@@ -59,7 +58,7 @@ time_t current_time;
 struct tm *local_time;
 pid_t pid;
 
-CFS_SESSION* pSession;
+CSWSCK pSession;
 
 void signalCatcher(int signal);
 
@@ -79,7 +78,6 @@ int main(int argc, char **argv)
   CFSENV pEnv;
   CFSRPS pRepo;
   CFSCFG pConfig;
-  CSWSCK pSession;
 
   openlog(basename(argv[0]), LOG_PID, LOG_LOCAL3);
   syslog(LOG_INFO, "clarah starting - config: %s", argv[3]);
