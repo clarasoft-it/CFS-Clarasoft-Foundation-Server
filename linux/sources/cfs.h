@@ -1,5 +1,5 @@
 /* ===========================================================================
-  Clarasoft Foundation Server 400
+  Clarasoft Foundation Server
   cfs.h
 
   Distributed under the MIT license
