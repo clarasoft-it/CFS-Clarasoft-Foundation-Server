@@ -1,5 +1,5 @@
 /* ===========================================================================
-  Clarasoft Foundation Server 400
+  Clarasoft Foundation Server OS/400 IBM i
   cfsapi.c
 
   Compile module with:
@@ -1473,6 +1473,74 @@ CFSVTBL secureVtbl = {
   CFS_SecureWrite,
   CFS_SecureWriteRecord,
 };
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// CFS_Receive
+//
+// This function receives up to a given size in bytes from a peer
+//
+//////////////////////////////////////////////////////////////////////////////
+
+CSRESULT
+  CFS_Receive
+    (CFS_SESSION* This,
+     char* Buffer,
+     long* size) {
+
+  return This->lpVtbl->CFS_Receive(This, Buffer, size);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// CFS_Receive
+//
+// This function receives a given size in bytes from a peer
+//
+//////////////////////////////////////////////////////////////////////////////
+
+CSRESULT
+  CFS_ReceiveRecord
+    (CFS_SESSION* This,
+     char* Buffer,
+     long* size) {
+
+  return This->lpVtbl->CFS_ReceiveRecord(This, Buffer, size);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// CFS_Send
+//
+// This function receives up to a given size in bytes from a peer
+//
+//////////////////////////////////////////////////////////////////////////////
+
+CSRESULT
+  CFS_Send
+    (CFS_SESSION* This,
+     char* Buffer,
+     long* size) {
+
+  return This->lpVtbl->CFS_Send(This, Buffer, size);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// CFS_SendReceord
+//
+// This function receives a given size in bytes from a peer
+//
+//////////////////////////////////////////////////////////////////////////////
+
+CSRESULT
+  CFS_SendRecord
+    (CFS_SESSION* This,
+     char* Buffer,
+     long* size) {
+
+  return This->lpVtbl->CFS_SendRecord(This, Buffer, size);
+}
 
 //////////////////////////////////////////////////////////////////////////////
 //
