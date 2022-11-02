@@ -1,5 +1,5 @@
 /* ===========================================================================
-  Clarasoft Foundation Server 400
+  Clarasoft Foundation Server OS/400 IBM i
   cfsapi.h
 
   Distributed under the MIT license
