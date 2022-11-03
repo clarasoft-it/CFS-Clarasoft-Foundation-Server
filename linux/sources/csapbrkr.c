@@ -481,12 +481,13 @@ int main(int argc, char** argv)
               break;
           }
 
-          CSWSCK_CloseChannel(pCSAP->pSession, 0, 0);
           syslog(LOG_INFO, "INFO: Session closed");
         }
         else {
           syslog(LOG_INFO, "ERROR: Invalid Broker service mode");
         }
+        
+        CSWSCK_CloseChannel(pCSAP->pSession, 0, 0);
       }
       else {
         syslog(LOG_INFO, "ERROR: Could not open websocket channel");
@@ -1226,7 +1227,7 @@ void signalCatcher(int signal)
   {
     case SIGTERM:
 
-      CFS_CloseChannel(pCSAP->pSession);
+      CSWSCK_CloseChannel(pCSAP->pSession, 0, 0);
       close(stream_fd);
       //dlclose(inprocServer);
 
