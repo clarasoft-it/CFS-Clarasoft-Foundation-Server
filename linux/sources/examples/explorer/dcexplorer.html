@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+
+<title>UAP - DC Explorer</title>
+
+<link rel="stylesheet" href="./listview.css">
+<link rel="stylesheet" href="./dcexplorer.css">
+
+<script src="./csap.js"></script>
+<script src="./dcexplorer.js"></script>
+
+<script>
+
+function dcxpl_init() {
+
+}
+
+</script>
+
+<style>
+
+</style>
+
+</head>
+
+<body onload="dcxpl_init();">
+
+    <div id="container">
+
+        <!-- ************************************************************************************* -->
+        <!-- ************************************************************************************* -->
+        <!-- ************************************************************************************* -->
+
+        <div id="home">
+            <button onClick="FRMPROC_Login();">Login</button>
+        </div>
+
+        <!-- ************************************************************************************* -->
+        <!-- ************************************************************************************* -->
+        <!-- ************************************************************************************* -->
+
+        <section>
+        <main>
+
+        <div id="rink" style="display:none;">
+
+            <header>
+                <div id="topnav" style="float:left; margin-right: 40px; background:rgb(66, 68, 73); padding:5px;">
+                    <img src="logo.png" width="200px" />
+                </div>
+                <div id="topinfo" style="color: white; font-size:40px; font-family:Arial;float:left; background:rgb(66, 68, 73); padding:5px;">
+                DVUAP001 FES *DEV
+               </div>
+               <div style="float:right;padding:5px;margin-right: 40px;"><button onClick="CMD('LOGOUT', null);">Logout</button></div>
+            </header>
+
+            <div class="topmenu">
+                 <ul id="breadcrumbs" class="breadcrumb"></ul>
+            </div>
+
+            <div id="menu" style="display:none;">
+              <div id="tiles" class="grid-container">
+              </div>
+            </div>
+
+            <div id="split" style="display:none;">
+
+              <div id="navtree">
+                <div id="treeviewPanel" class="treeviewPanel">
+                </div>
+              </div>
+
+              <div id="splitter" onpointerdown="moveStart(event)" onpointerup="moveDone(event)">
+              </div>
+
+              <div id="topic">
+
+                    
+              </div>
+            </div>
+
+            <div id="field"  style="display:none;">
+
+            </div>
+
+        </div>
+
+        </main>
+        </section>
+
+        <!-- ************************************************************************************* -->
+        <!-- ************************************************************************************* -->
+        <!-- ************************************************************************************* -->
+
+        <footer>
+
+        </footer>
+    </div>
+
+        <!-- ************************************************************************************* -->
+        <!-- ************************************************************************************* -->
+        <!-- ************************************************************************************* -->
+
+    <div class="modal">
+        <div class="modal-content">
+            <div>
+                <input type="edit" />
+            </div>
+            <div>
+                <button class="close-button-cancel">Cancel</button>
+                <button class="close-button-ok">Ok</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+    /* ============================================================================================================
+      Dialogs
+    ============================================================================================================ */
+
+    const modal = document.querySelector(".modal");
+    const okButton = document.querySelector(".close-button-ok");
+    const cancelButton = document.querySelector(".close-button-cancel");
+
+    function toggleModal() {
+      modal.classList.toggle("show-modal");
+    }
+
+    function windowOnClick(event) {
+      if (event.target === modal) {
+        toggleModal();
+      }
+    }
+
+    okButton.addEventListener("click", toggleModal);
+    cancelButton.addEventListener("click", toggleModal);
+    window.addEventListener("click", windowOnClick);
+
+    </script>
+
+</body>
+
+</html>

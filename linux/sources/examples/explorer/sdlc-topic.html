@@ -1,0 +1,164 @@
+
+                        <div id="SDLC-home"></div>
+                        
+                        <div id="project-list" style="display:none;">
+
+                            <div id="project-list-hdr">
+                                <table>
+                                    <tr><td id="section-caption"></td><td><button id="section-caption-new"></button></td></tr>
+                                </table>
+                            </div>
+    
+                            <div id="project-list-table">
+                            </div>
+    
+                        </div>
+    
+    
+                        <div id="task-list" style="display:none;">
+    
+                            <div id="task-list-hdr">
+                            </div>
+    
+                            <div id="task-list-table">
+                            </div>
+    
+                        </div>
+    
+    
+                        <div id="task-panel" style="display:none;">
+    
+                        <div
+                            style="top: 0; position:sticky; height: 150px; margin-bottom: 10px; padding-top:10px;background: rgb(255, 255, 255); font-family:Arial; font-size:25px;">
+                            <div style="padding: 5px;" id="SDLC-Project">
+                                <span id="SDLC-project-id"></span>
+                            </div>
+                            <div style="padding: 5px; margin-bottom: 20px;" id="SDLC-Project">
+                                <span id="SDLC-task-id"></span>
+                            </div>
+                            <div class="tab">
+                                <button class="tablinks-SDLC-PANEL" id="tablinks-SDLC-PANEL-default"
+                                    onclick="SDLC_PANEL_General(event, 'SDLC-GENERAL-PANEL')">General</button>
+                                <button class="tablinks-SDLC-PANEL"
+                                    onclick="SDLC_PANEL_General(event, 'SDLC-DEPLOYMENT-PANEL')">Deploiement</button>
+                            </div>
+                        </div>
+    
+
+                        <div id="SDLC-GENERAL-PANEL" class="tabcontent-SDLC-PANEL">
+                            <!--
+                            ****** SDLC-GENERAL TAB *******
+                            -->
+    
+                            <!--
+                           <button class="trigger">Click here to trigger the modal!</button>
+                           -->
+                            <table class="clara-table">
+                                <tr>
+                                    <td>Description</td>
+                                    <td id="SDLC-description"></td>
+                                    <td><img src="icon-edit.png" width="20px" height="20px" /></td>
+                                </tr>
+                                <tr>
+                                    <td>Justification</td>
+                                    <td id="SDLC-justification"></td>
+                                    <td><img src="icon-edit.png" width="20px" height="20px" /></td>
+                                </tr>
+                                <tr>
+                                    <td>No. DSA</td>
+                                    <td id="SDLC-DSA"></td>
+                                    <td><img src="icon-edit.png" width="20px" height="20px" /></td>
+                                </tr>
+                                <tr>
+                                    <td>Approbateur</td>
+                                    <td id="SDLC-approval"></td>
+                                    <td><img src="icon-edit.png" width="20px" height="20px" /></td>
+                                </tr>
+                            </table>
+    
+                            <div class="section-hdr">
+                                Documents
+                                <div style="float:right;"><img src="icon-add.png" width="20px" height="20px" /></div>
+                            </div>
+                            <div id="grid-documents" class="section-content">
+                            </div>
+    
+                        </div>
+    
+                        <div id="SDLC-DEPLOYMENT-PANEL" class="tabcontent-SDLC-PANEL">
+                        <!--
+                        ****** SDLC-DEPLOYMENT TAB *******
+                        -->
+    
+                            <div class="section-hdr">
+                                Cibles
+                                <div style="float:right;"><img src="icon-add.png" width="20px" height="20px" /></div>
+                            </div>
+                            <div id="grid-cibles" class="section-content">
+                            </div>
+    
+                            <div class="section-hdr">
+                                Objets
+                                <div style="float:right;"><img src="icon-add.png" width="20px" height="20px" /></div>
+                            </div>
+                            <div id="grid-objects" class="section-content">
+                            </div>
+    
+                            <div class="section-hdr">
+                                One Shots
+                                <div style="float:right;"><img src="icon-add.png" width="20px" height="20px" /></div>
+                            </div>
+    
+                            <div id="notes-oneshot-before" class="section-content">
+                                <h4 class="notes">Before</h4>
+                            </div>
+                            <div id="grid-oneshot-before" class="section-content">
+                            </div>
+    
+                            <div id="notes-oneshot-after" class="section-content">
+                                <h4 class="notes">After</h4>
+                            </div>
+                            <div id="grid-oneshot-after" class="section-content">
+                            </div>
+    
+                            <div class="section-hdr">
+                                Implantation
+                                <div style="float:right;"><img src="icon-add.png" width="20px" height="20px" /></div>
+                            </div>
+                            <div id="notes-implantation-before" class="section-content">
+                                <h4 class="notes">Notes<img style="margin-left:30px;" src="icon-add.png" width="20px"
+                                        height="20px" /></h4>
+                            </div>
+    
+                            <div class="section-content">
+                                <div class="tab">
+                                    <button class="tablinks-DEPLOY" id="tablinks-DEPLOY-default"
+                                        onclick="SDLC_DC_Deploy(event, 'DEPLOY-052')">Montreal</button>
+                                    <button class="tablinks-DEPLOY"
+                                        onclick="SDLC_DC_Deploy(event, 'DEPLOY-166')">Cambridge</button>
+                                    <button class="tablinks-DEPLOY"
+                                        onclick="SDLC_DC_Deploy(event, 'DEPLOY-188')">Edmonton</button>
+                                </div>
+    
+                                <div id="DEPLOY-052" class="tabcontent-DEPLOY">
+                                    <div id="grid-implantation-052">
+    
+                                    </div>
+                                </div>
+    
+                                <div id="DEPLOY-166" class="tabcontent-DEPLOY">
+                                    <div id="grid-implantation-166">
+    
+                                    </div>
+                                </div>
+    
+                                <div id="DEPLOY-188" class="tabcontent-DEPLOY">
+                                    <div id="grid-implantation-188">
+    
+                                    </div>
+                                </div>
+                            </div>
+    
+                        </div>
+
+                    </div>
