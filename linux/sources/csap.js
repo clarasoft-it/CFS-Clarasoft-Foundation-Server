@@ -1,5 +1,3 @@
-
-
 function CSAP() {
 
     if ("WebSocket" in window) {
@@ -45,7 +43,7 @@ function CSAP() {
   
           InMessage = "";
 
-          var ctlFrame = {ctl:{usrCtlSize:0, dataSize: 0}};
+          var ctlFrame = {ctl:{usrCtlSize:0, dataSize: 0, fmt:"text"}};
 
           if (userCtlFrame === null || userCtlFrame === undefined) {
             ctlFrame.ctl.usrCtlSize = 0;
