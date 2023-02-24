@@ -1,7 +1,6 @@
 /*----------------------------------------------------------------------------*/
-/*  Clarasoft Foundation Server OS/400 IBM i                                  */
+/*  Clarasoft Foundation Server - OS/400                                      */
 /*                                                                            */
-/*  Export source file                                                        */
 /*  Version 7.0.0                                                             */
 /*                                                                            */
 /*  Distributed under the MIT license                                         */
@@ -30,17 +29,13 @@
              STRPGMEXP  PGMLVL(*CURRENT) SIGNATURE(*GEN)
 
                 EXPORT     SYMBOL("CFS_CloseChannel")
+                EXPORT     SYMBOL("CFS_CloseChannelDescriptor")
                 EXPORT     SYMBOL("CFS_CloseEnv")
                 EXPORT     SYMBOL("CFS_CloseSession")
                 EXPORT     SYMBOL("CFS_OpenChannel")
                 EXPORT     SYMBOL("CFS_OpenEnv")
                 EXPORT     SYMBOL("CFS_OpenSession")
-                EXPORT     SYMBOL("CFS_QueryInterface")
                 EXPORT     SYMBOL("CFS_QuerySessionInfo")
-                EXPORT     SYMBOL("CFS_Receive")
-                EXPORT     SYMBOL("CFS_ReceiveRecord")
-                EXPORT     SYMBOL("CFS_Send")
-                EXPORT     SYMBOL("CFS_SendRecord")
                 EXPORT     SYMBOL("CFS_ReceiveDescriptor")
                 EXPORT     SYMBOL("CFS_SendDescriptor")
 
@@ -94,16 +89,19 @@
                 EXPORT     SYMBOL("CSWSCK_OpenChannel")
                 EXPORT     SYMBOL("CSWSCK_OpenSession")
                 EXPORT     SYMBOL("CSWSCK_Receive")
+                EXPORT     SYMBOL("CSWSCK_ReceiveAll")
                 EXPORT     SYMBOL("CSWSCK_Send")
 
                 EXPORT     SYMBOL("CSAP_Constructor")
                 EXPORT     SYMBOL("CSAP_Destructor")
                 EXPORT     SYMBOL("CSAP_Clear")
+                EXPORT     SYMBOL("CSAP_CloseChannel")
                 EXPORT     SYMBOL("CSAP_CloseService")
                 EXPORT     SYMBOL("CSAP_Get")
                 EXPORT     SYMBOL("CSAP_GetDataRef")
                 EXPORT     SYMBOL("CSAP_GetUserCtl")
                 EXPORT     SYMBOL("CSAP_GetUserCtlRef")
+                EXPORT     SYMBOL("CSAP_OpenChannel")
                 EXPORT     SYMBOL("CSAP_OpenService")
                 EXPORT     SYMBOL("CSAP_Put")
                 EXPORT     SYMBOL("CSAP_Receive")
@@ -113,3 +111,4 @@
                 EXPORT     SYMBOL("CSAP_StreamEx")
 
              ENDPGMEXP
+
