@@ -1,6 +1,6 @@
 /* ==========================================================================
 
-  Clarasoft Foundation Server - OS/400
+  Clarasoft Foundation Server - OS/400 
   CFS Service Handler
 
   Distributed under the MIT license
