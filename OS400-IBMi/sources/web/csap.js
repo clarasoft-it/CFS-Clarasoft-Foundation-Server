@@ -1,3 +1,5 @@
+// CSAP class
+
 function CSAP() {
 
     if ("WebSocket" in window) {
